@@ -1,3 +1,13 @@
-export type ErrorMap = {
-    [key: string]: string | string[]
+export interface PageInfo  {
+    pageIndex: number,
+    pageSize: number
 }
+
+
+export enum SensorState {
+    IDLE = 1,
+    COOLING = 2,
+    HEATING = 3,
+}
+
+export type ErrorMap = Record<string, string | string[]>

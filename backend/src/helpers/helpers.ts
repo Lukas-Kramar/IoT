@@ -2,12 +2,12 @@ import { ObjectId } from "mongodb"
 import { Policy } from "../models/Organisation"
 import { collections } from "../services/database.service"
 
-export const validateUserHasAdminAccessToOrg = async (userId: string, organisationId: string) => {
+export const validateUserHasAdminAccessToOrg = async (userId: string, organisationId: ObjectId) => {
     if (!collections.organisations) {
         return { code: 500, message: "DB is in invalid state - collection Organisations doesn't exist" }
     }
     const queryOrganisation = {
-        _id: new ObjectId(organisationId),
+        _id: organisationId,
         users: {
             $elemMatch: {
                 id: userId,

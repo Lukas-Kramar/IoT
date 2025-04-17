@@ -31,8 +31,10 @@ measurementPointRouter.post(
 
         const { organisationId, name, description = "" } = req.body;
         const userId = req.userId ?? "";
+
+        const organisationObjectId = new ObjectId(organisationId)
         try {
-            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationId);
+            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationObjectId);
             if (userHasAccess.code === 500 || userHasAccess.code === 404) {
                 const isAppAdmin = await isUserAdmin(userId);
                 if (!isAppAdmin) {
@@ -42,14 +44,14 @@ measurementPointRouter.post(
                 }
             }
 
-            const newMeasurementPoint = {
-                organisationId,
+            const newMeasurementPoint: MeasurementPoint = {
+                organisationId: organisationObjectId,
                 name,
                 description,
-                creatorId: req.userId as string,
+                ownerId: String(req.userId),
                 sensors: [],
-                createdEpoch: dayjs().unix(), // Current timestamp in seconds
-                updatedEpoch: dayjs().unix(), // Initialy same as createdEpoch
+                influxMeasurement: "",
+                created: dayjs().unix(), 
             };
             const result = await collections.measurementPoints.insertOne(newMeasurementPoint);
             if (result.acknowledged) {
@@ -88,8 +90,9 @@ measurementPointRouter.post(
         const { organisationId, id } = req.body;
         const userId = req.userId ?? "";
 
+        const organisationObjectId = new ObjectId(organisationId)
         try {
-            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationId);
+            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationObjectId);
             if (userHasAccess.code === 500 || userHasAccess.code === 404) {
                 const isAppAdmin = await isUserAdmin(userId);
                 if (!isAppAdmin) {
@@ -143,7 +146,7 @@ measurementPointRouter.get(
             }
 
             const userIsInOrg = await collections.organisations.findOne({
-                _id: new ObjectId(measurementPoint.organisationId as string),
+                _id: measurementPoint.organisationId,
                 "users.id": userId,
             })
             if (!userIsInOrg) {
@@ -277,7 +280,7 @@ measurementPointRouter.post(
                     if (!oldSensor) { return sen; }
                     return {
                         ...sen,
-                        config: (sen.config.epochCreated > oldSensor.config.epochCreated) ? sen.config : oldSensor.config
+                        config: (sen.config.created > oldSensor.config.created) ? sen.config : oldSensor.config
                     }
                 });
             }

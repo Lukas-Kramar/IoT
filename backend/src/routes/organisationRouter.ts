@@ -33,7 +33,7 @@ organisationRouter.post(
 
         try {
             const { name, description } = req.body;
-            const userId = req.userId ?? "";
+            const userId = new ObjectId(req.userId ?? "");
 
             const epochNow = dayjs().unix();
 
@@ -42,8 +42,7 @@ organisationRouter.post(
                 description: description ?? "",
                 users: [{ policy: Policy.Admin, id: userId }],
                 bucketToken: "", // TODO - add logic for creating bucket Token (will be used by measurment points to insert data into InfluxDB)
-                createdEpoch: epochNow,
-                updatedEpoch: epochNow,
+                created: epochNow,
             }
 
             const result = await collections.organisations.insertOne(newOrganisation);
@@ -102,7 +101,8 @@ organisationRouter.post(
 
             console.log("organisation/delete - userId: ", userId);
 
-            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationId);
+            const organisationObjectId = new ObjectId(organisationId)
+            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationObjectId);
             if (userHasAccess.code === 500 || userHasAccess.code === 404) {
                 const isAppAdmin = await isUserAdmin(userId);
                 if (!isAppAdmin) {
@@ -112,8 +112,9 @@ organisationRouter.post(
                 }
             }
 
+            const deleteObjectId = new ObjectId(organisationId);
             const deletedResult = await collections.organisations.deleteOne({
-                _id: new ObjectId(organisationId),
+                _id: deleteObjectId,
                 users: {
                     $elemMatch: {
                         id: userId,
@@ -126,7 +127,7 @@ organisationRouter.post(
                 return;
             } else if (deletedResult.acknowledged && deletedResult.deletedCount > 0) {
                 const deletedMeasurementPoints = await collections.measurementPoints.deleteMany({
-                    organisationId,
+                    organisationId: deleteObjectId,
                 });
                 res.status(202).json({ errorMap: req.errorMap });
             } else {
@@ -159,8 +160,8 @@ organisationRouter.post(
         try {
             const { id, name, description, users } = req.body;
             const userId = req.userId ?? "";
-
-            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, id);
+            const organisationObjectId = new ObjectId(id)
+            const userHasAccess = await validateUserHasAdminAccessToOrg(userId, organisationObjectId);
             if (userHasAccess.code === 500 || userHasAccess.code === 404) {
                 const isAppAdmin = await isUserAdmin(userId);
                 if (!isAppAdmin) {

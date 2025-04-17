@@ -1,5 +1,7 @@
-export type TemperatureData = {
-    dateTime: string, // date-time ISO representation 
-    epoch: number,
+import { SensorState } from "../types/customTypes"
+
+export interface TemperatureData {
+    timeStamp: number,
     temperature: number,
+    state: SensorState
 }

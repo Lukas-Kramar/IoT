@@ -43,9 +43,7 @@ userRouter.post(
                 const userId = verifyToken(token);
                 if (typeof userId === "string") {
                     const user = await collections.users.findOne({ _id: userId, role: Policy.Admin });
-                    if (user) {
-                        isAdmin = true;
-                    }
+                    if (user) { isAdmin = true; }
                 }
             }
 
@@ -64,8 +62,7 @@ userRouter.post(
                 email,
                 password: await hashPassword(password),
                 role: isAdmin ? role : Policy.Member,
-                createdEpoch: epochNow,
-                updatedEpoch: epochNow,
+                created: epochNow,
             }
 
             const result = await collections.users.insertOne(newUser);
@@ -80,17 +77,17 @@ userRouter.post(
             );
             if (createdUser) {
                 res.status(201).json({ ...createdUser, errorMap: req.errorMap });
-            } else {
-                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the created User Document" } });
+                return;
             }
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the created User Document" } });
         } catch (error) {
             if (error instanceof Error) {
                 console.error(error.message);
                 res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: error.message } });
-            } else {
-                console.error("An unknown error occurred: ", error);
-                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "An unknown error occurred" } });
+                return;
             }
+            console.error("An unknown error occurred: ", error);
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "An unknown error occurred" } });
         }
     }
 );
@@ -135,9 +132,8 @@ userRouter.post(
             }
             else if (email && password) {
                 const dbUser = await collections.users.findOne(
-                    {
-                        email: email,
-                    },
+                    { email: email, },
+                    { projection: { password: 0 } }
                 );
                 if (!dbUser) {
                     req.errorMap["403"] = "Unauthorized";
@@ -151,7 +147,7 @@ userRouter.post(
                     return;
                 }
                 const generatedToken = generateToken({ id: dbUser._id.toString() });
-                delete dbUser.password;
+                // delete dbUser.password;
                 res.status(200).json({ ...dbUser, token: generatedToken, errorMap: req.errorMap });
                 return;
             }

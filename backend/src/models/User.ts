@@ -1,15 +1,12 @@
 import { ObjectId } from "mongodb";
 import { Policy } from "./Organisation";
+import { BaseEntity } from "./BaseEntity";
 
-export default class User {
-    constructor(
-        public firstName: string,
-        public lastName: string,
-        public email: string,
-        public password: string, // hash 
-        public role: Policy,
-        public createdEpoch: number,
-        public updatedEpoch: number,
-        public _id?: ObjectId
-    ) { }
+
+export default interface User extends BaseEntity {
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string, // hash 
+    role: Policy
 }
