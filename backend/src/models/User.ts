@@ -1,7 +1,5 @@
-import { ObjectId } from "mongodb";
 import { Policy } from "./Organisation";
 import { BaseEntity } from "./BaseEntity";
-
 
 export default interface User extends BaseEntity {
     firstName: string,

@@ -108,6 +108,8 @@ userRouter.post(
         try {
             const { email, password, token } = req.body;
 
+            console.log("req.body: ", req.body);
+
             if (token) {
                 const result = await verifyToken(token);
                 if (result === 500) {
@@ -133,22 +135,29 @@ userRouter.post(
             else if (email && password) {
                 const dbUser = await collections.users.findOne(
                     { email: email, },
-                    { projection: { password: 0 } }
                 );
                 if (!dbUser) {
                     req.errorMap["403"] = "Unauthorized";
                     res.status(403).json({ errorMap: req.errorMap });
                     return;
                 }
-                const verifiedPassword = await bcrypt.compare(password, dbUser.password as string);
+                const verifiedPassword = await bcrypt.compare(password, dbUser.password);
                 if (!verifiedPassword) {
                     req.errorMap["403"] = "Unauthorized";
                     res.status(403).json({ errorMap: req.errorMap });
                     return;
                 }
                 const generatedToken = generateToken({ id: dbUser._id.toString() });
-                // delete dbUser.password;
-                res.status(200).json({ ...dbUser, token: generatedToken, errorMap: req.errorMap });
+                const userWithoutPassword = {
+                    _id: dbUser._id,
+                    firstName: dbUser.firstName,
+                    lastName: dbUser.lastName,
+                    email: dbUser.email,
+                    role: dbUser.role,
+                    created: dbUser.created,
+                    updated: dbUser.updated
+                };
+                res.status(200).json({ ...userWithoutPassword, token: generatedToken, errorMap: req.errorMap });
                 return;
             }
 
@@ -326,10 +335,10 @@ userRouter.get(
             if (error instanceof Error) {
                 console.error(error.message);
                 res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: error.message } });
-            } else {
-                console.error("An unknown error occurred", error);
-                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "An unknown error occurred" } });
+                return;
             }
+            console.error("An unknown error occurred", error);
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "An unknown error occurred" } });
         }
     }
 )

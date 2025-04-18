@@ -1,7 +1,4 @@
 import { ObjectId } from "mongodb";
-import dayjs from "dayjs";
-
-import { TemperatureRange } from "../validators/other_schemas/temperatureRange.schema";
 import { BaseEntity } from "./BaseEntity";
 
 export interface SenzorConfiguration {
@@ -16,7 +13,7 @@ export interface SenzorConfiguration {
 }
 
 export type MeasuredQuantity = "temperature" | "acceleration";
-export interface Senzor {
+export interface Sensor {
     sensorId: string,
     name: string,
     quantity: MeasuredQuantity,
@@ -32,5 +29,5 @@ export default interface MeasurementPoint extends BaseEntity {
     name: string,
     description: string,
     influxMeasurement: string,
-    sensors: Senzor[],
+    sensors: Sensor[],
 }

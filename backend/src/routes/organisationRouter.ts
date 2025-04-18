@@ -192,7 +192,12 @@ organisationRouter.post(
                     res.status(400).json(req.errorMap);
                     return;
                 }
-                updateFields.users = users;
+                updateFields.users = users.map((user) => {
+                    return {
+                        ...user,
+                        id: new ObjectId(user.id),
+                    }
+                });
             }
 
             const result = await collections.organisations.updateOne(

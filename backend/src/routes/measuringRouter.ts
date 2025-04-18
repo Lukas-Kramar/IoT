@@ -3,7 +3,7 @@ import { NextFunction, Response, Router } from 'express';
 import { collections } from '../services/database.service';
 
 import { MeasuringGetConfigurationRequest, measuringGetConfigurationValidator } from '../validators/measuring/measuringGetConfiguration.validator';
-import { Senzor } from '../models/MeasurementPoint';
+import { Sensor } from '../models/MeasurementPoint';
 import { MeasuringUpdateConfigurationRequest, measuringUpdateConfigurationValidator } from '../validators/measuring/measuringUpdateConfiguration.validator';
 import { DataAddRequest, dataAddValidator } from '../validators/measuring/dataAdd.validator';
 
@@ -39,7 +39,7 @@ measuringRouter.get(
                 return;
             }
 
-            const senzor = measurementPoint.sensors.find((sen: Senzor) => sen.sensorId === sensorId);
+            const senzor = measurementPoint.sensors.find((sen: Sensor) => sen.sensorId === sensorId);
             if (!senzor) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Sensor with this sensorId: ${sensorId} was not found.` } });
                 return;
@@ -85,7 +85,7 @@ measuringRouter.post(
                 return;
             }
 
-            const senzorIndex: number = measurementPoint.sensors.findIndex((sen: Senzor) => sen.sensorId === sensorId);
+            const senzorIndex: number = measurementPoint.sensors.findIndex((sen: Sensor) => sen.sensorId === sensorId);
             if (senzorIndex === -1) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Sensor with this sensorId: ${sensorId} was not found.` } });
                 return;

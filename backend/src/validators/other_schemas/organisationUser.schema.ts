@@ -1,13 +1,16 @@
 import { JSONSchemaType } from "ajv";
 import { VALIDATION_ERRORS } from "../../errors/errorMessages";
-import { OrganisationUser } from "../../models/Organisation";
-
-export const organisationUserSchema: JSONSchemaType<OrganisationUser> = {
+import { Policy } from "../../models/Organisation";
+export interface OrganisationUserSchema {
+    policy: Policy,
+    id: string,
+}
+export const organisationUserSchema: JSONSchemaType<OrganisationUserSchema> = {
     type: 'object',
     properties: {
         policy: {
             type: 'integer',
-            enum: [0, 1],
+            enum: [Policy.Admin, Policy.Member],
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} integer`,
                 enum: `${VALIDATION_ERRORS.ENUM} Policy (0 for Admin, 1 for Member)`,
@@ -24,11 +27,4 @@ export const organisationUserSchema: JSONSchemaType<OrganisationUser> = {
     },
     required: ['policy', 'id'],
     additionalProperties: false,
-    // errorMessage: {
-    // required: {
-    //     policy: `${VALIDATION_ERRORS.REQUIRED} policy`,
-    //     id: `${VALIDATION_ERRORS.REQUIRED} id`,
-    // },
-    // additionalProperties: `${VALIDATION_ERRORS.ADDITIONAL_PROPERTIES} not allowed`,
-    // }
 }

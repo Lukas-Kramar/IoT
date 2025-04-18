@@ -7,7 +7,7 @@ import { collections } from "../services/database.service";
 import { AuthorizationRequest, authorizeJWTToken } from '../authorization/authorizeUser';
 import { isUserAdmin, validateUserHasAdminAccessToOrg } from '../helpers/helpers';
 import MeasurementPoint from '../models/MeasurementPoint';
-import { Senzor } from '../models/MeasurementPoint';
+import { Sensor } from '../models/MeasurementPoint';
 
 import { MeasurementPointAddRequest, measurementPointAddValidator } from '../validators/measurementPoint/measurementPointAdd.validator';
 import { MeasurementPointDeleteRequest, measurementPointDeleteValidator } from '../validators/measurementPoint/measurementPointDelete.validator';
@@ -51,7 +51,7 @@ measurementPointRouter.post(
                 ownerId: String(req.userId),
                 sensors: [],
                 influxMeasurement: "",
-                created: dayjs().unix(), 
+                created: dayjs().unix(),
             };
             const result = await collections.measurementPoints.insertOne(newMeasurementPoint);
             if (result.acknowledged) {
@@ -265,7 +265,7 @@ measurementPointRouter.post(
             }
 
             // Define the update fields
-            const updateFields: { updatedEpoch: number, name?: string, description?: string, sensors?: Senzor[] } = { updatedEpoch: dayjs().unix() };
+            const updateFields: { updatedEpoch: number, name?: string, description?: string, sensors?: Sensor[] } = { updatedEpoch: dayjs().unix() };
             if (name) { updateFields.name = name; }
             if (description) { updateFields.description = description; }
             if (sensors) {
@@ -276,10 +276,11 @@ measurementPointRouter.post(
                     return;
                 }
                 updateFields.sensors = sensors.map((sen) => {
-                    const oldSensor: Senzor | undefined = measurementPoint.sensors.find((odlSen: Senzor) => odlSen.sensorId === sen.sensorId)
-                    if (!oldSensor) { return sen; }
+                    const newSensor: Sensor = { ...sen };
+                    const oldSensor = measurementPoint.sensors.find((odlSen: Sensor) => odlSen.sensorId === sen.sensorId)
+                    if (!oldSensor) { return newSensor; }
                     return {
-                        ...sen,
+                        ...newSensor,
                         config: (sen.config.created > oldSensor.config.created) ? sen.config : oldSensor.config
                     }
                 });

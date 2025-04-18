@@ -1,8 +1,3 @@
-export interface PageInfo  {
-    pageIndex: number,
-    pageSize: number
-}
-
 
 export enum SensorState {
     IDLE = 1,
