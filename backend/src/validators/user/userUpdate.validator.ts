@@ -2,7 +2,8 @@ import { Response, NextFunction } from 'express';
 import { parseErrors } from '../../errors/ajvError';
 
 import { AuthorizationRequest } from '../../authorization/authorizeUser';
-import { UpdateUser, validateUserUpdate } from './userUpdate.schema';
+import { validateUserUpdate } from './userUpdate.schema';
+import { UpdateUser } from '../../models/User';
 
 export interface UserUpdateRequest extends AuthorizationRequest {
     body: UpdateUser

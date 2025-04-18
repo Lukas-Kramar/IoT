@@ -1,6 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { VALIDATION_ERRORS } from "../../errors/errorMessages";
 import { Policy } from "../../models/Organisation";
+import { userPolicySchema } from "../user/userPolicy.schema";
 export interface OrganisationUserSchema {
     policy: Policy,
     id: string,
@@ -8,14 +9,7 @@ export interface OrganisationUserSchema {
 export const organisationUserSchema: JSONSchemaType<OrganisationUserSchema> = {
     type: 'object',
     properties: {
-        policy: {
-            type: 'integer',
-            enum: [Policy.Admin, Policy.Member],
-            errorMessage: {
-                type: `${VALIDATION_ERRORS.TYPE} integer`,
-                enum: `${VALIDATION_ERRORS.ENUM} Policy (0 for Admin, 1 for Member)`,
-            },
-        },
+        policy: userPolicySchema,
         id: {
             type: 'string',
             format: 'objectId',

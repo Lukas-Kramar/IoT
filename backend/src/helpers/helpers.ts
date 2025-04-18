@@ -8,6 +8,7 @@ export const validateUserHasAdminAccessToOrg = async (userId: string, organisati
     }
     const queryOrganisation = {
         _id: organisationId,
+        deleted: { $exists: false },
         users: {
             $elemMatch: {
                 id: userId,
@@ -32,7 +33,8 @@ export const isUserAdmin = async (userId: string) => {
     }
     const isUserAdmin = await collections.users.findOne({
         _id: new ObjectId(userId),
-        role: Policy.Admin
+        role: Policy.Admin,
+        deleted: { $exists: false },
     });
     return !!isUserAdmin;
 }

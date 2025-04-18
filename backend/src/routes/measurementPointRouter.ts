@@ -54,16 +54,16 @@ measurementPointRouter.post(
                 created: dayjs().unix(),
             };
             const result = await collections.measurementPoints.insertOne(newMeasurementPoint);
-            if (result.acknowledged) {
-                const createdMeasurementPoint = await collections.measurementPoints.findOne({ _id: result.insertedId });
-                if (createdMeasurementPoint) {
-                    res.status(201).json({ ...createdMeasurementPoint, errorMap: req.errorMap });
-                } else {
-                    res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the created document" } });
-                }
-            } else {
+            if (!result.acknowledged) {
                 res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Insert operation failed" } });
+                return;
             }
+            const createdMeasurementPoint = await collections.measurementPoints.findOne({ _id: result.insertedId });
+            if (createdMeasurementPoint) {
+                res.status(201).json({ ...createdMeasurementPoint, errorMap: req.errorMap });
+                return;
+            }
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the created document" } });
         } catch (error) {
             if (error instanceof Error) {
                 console.error(error.message);
@@ -102,12 +102,18 @@ measurementPointRouter.post(
                 }
             }
 
-            const result = await collections.measurementPoints.deleteOne({ _id: new ObjectId(id) });
+            const result = await collections.measurementPoints.updateOne(
+                {
+                    _id: new ObjectId(id),
+                    deleted: { $exists: false }
+                },
+                { $set: { deleted: dayjs().unix() } }
+            );
             if (result.acknowledged) {
                 res.status(202).json({ errorMap: req.errorMap });
-            } else {
-                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Delete operation failed" } });
+                return;
             }
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Delete operation failed" } });
 
         } catch (error) {
             if (error instanceof Error) {
@@ -136,18 +142,20 @@ measurementPointRouter.get(
         const id = req?.params?.id;
         const userId = req.userId ?? "";
 
-        const query = { _id: new ObjectId(id), }
-
         try {
-            const measurementPoint = await collections.measurementPoints.findOne(query);
+            const measurementPoint = await collections.measurementPoints.findOne({
+                _id: new ObjectId(id),
+                deleted: { $exists: false },
+            });
             if (!measurementPoint) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Measurement Point with id: ${id}` } });
                 return;
             }
 
             const userIsInOrg = await collections.organisations.findOne({
-                _id: measurementPoint.organisationId,
-                "users.id": userId,
+                _id: new ObjectId(measurementPoint.organisationId),
+                deleted: { $exists: false },
+                "users.id": new ObjectId(userId),
             })
             if (!userIsInOrg) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Measurement Point with id: ${id}` } });
@@ -184,42 +192,42 @@ measurementPointRouter.post(
         try {
             const userIsInOrg = await collections.organisations.findOne({
                 _id: new ObjectId(organisationId),
-                "users.id": userId,
+                deleted: { $exists: false },
+                "users.id": new ObjectId(userId),
             })
             if (!userIsInOrg) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Organisation with id: ${organisationId}` } });
                 return;
             }
 
-            const queryFilter = [
-                // Match documents based on the filtering conditions
-                {
-                    $match: {
-                        organisationId: organisationId,
-                    }
-                },
-                {
-                    $facet: {
-                        totalCount: [{ $count: "count" }], // Count total matching documents
-                        paginatedResults: [
-                            { $sort: { name: (order === "desc" ? -1 : 1) } }, // Sort by name field
-                            { $skip: pageInfo.pageIndex * pageInfo.pageSize }, // Skip for pagination
-                            { $limit: pageInfo.pageSize }, // Limit to page size
-                        ],
+            const measurementPoints = await collections.measurementPoints
+                .aggregate([
+                    {
+                        $match: {
+                            deleted: { $exists: false },
+                            organisationId: organisationId,
+                        }
                     },
-                },
-            ];
-
-
-            const measurementPoints = await collections.measurementPoints.aggregate(queryFilter).toArray();
+                    {
+                        $facet: {
+                            totalCount: [{ $count: "count" }], // Count total matching documents
+                            paginatedResults: [
+                                { $sort: { name: (order === "desc" ? -1 : 1) } }, // Sort by name field
+                                { $skip: pageInfo.pageIndex * pageInfo.pageSize }, // Skip for pagination
+                                { $limit: pageInfo.pageSize }, // Limit to page size
+                            ],
+                        },
+                    },
+                ])
+                .toArray();
             const totalCount = measurementPoints[0]?.totalCount[0]?.count || 0; // Total count of matching documents
             const paginatedResults: (MeasurementPoint & { _id: ObjectId })[] = measurementPoints[0]?.paginatedResults || []; // Paginated results
 
             if (Array.isArray(paginatedResults)) {
                 res.status(200).json({ measurementPoints: paginatedResults, pageInfo: { ...pageInfo, total: totalCount } });
-            } else {
-                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the Measurement Points" } });
+                return;
             }
+            res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the Measurement Points" } });
         } catch (error) {
             if (error instanceof Error) {
                 console.error(error.message);
@@ -246,7 +254,10 @@ measurementPointRouter.post(
 
         const { id, name = "", description = "", sensors } = req.body;
         const userId = req.userId ?? "";
-        const query = { _id: new ObjectId(id) };
+        const query = {
+            _id: new ObjectId(id),
+            deleted: { $exists: false },
+        };
         try {
             const measurementPoint = await collections.measurementPoints.findOne(query);
             if (!measurementPoint) {
@@ -265,7 +276,12 @@ measurementPointRouter.post(
             }
 
             // Define the update fields
-            const updateFields: { updatedEpoch: number, name?: string, description?: string, sensors?: Sensor[] } = { updatedEpoch: dayjs().unix() };
+            const updateFields: {
+                updated: number,
+                name?: string,
+                description?: string,
+                sensors?: Sensor[]
+            } = { updated: dayjs().unix() };
             if (name) { updateFields.name = name; }
             if (description) { updateFields.description = description; }
             if (sensors) {

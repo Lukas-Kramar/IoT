@@ -8,3 +8,11 @@ export default interface User extends BaseEntity {
     password: string, // hash 
     role: Policy
 }
+
+export interface UpdateUser {
+    _id: string,
+    firstName?: string,
+    lastName?: string,
+    email?: string,
+    role?: Policy,
+}

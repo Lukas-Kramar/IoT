@@ -6,6 +6,7 @@ import { MeasuringGetConfigurationRequest, measuringGetConfigurationValidator } 
 import { Sensor } from '../models/MeasurementPoint';
 import { MeasuringUpdateConfigurationRequest, measuringUpdateConfigurationValidator } from '../validators/measuring/measuringUpdateConfiguration.validator';
 import { DataAddRequest, dataAddValidator } from '../validators/measuring/dataAdd.validator';
+import dayjs from 'dayjs';
 
 const measuringRouter = Router();
 
@@ -28,6 +29,7 @@ measuringRouter.get(
 
         try {
             const measurementPoint = await collections.measurementPoints.findOne({
+                deleted: { $exists: false },
                 sensors: {
                     $elemMatch: {
                         sensorId: sensorId
@@ -74,6 +76,7 @@ measuringRouter.post(
         const { sensorId, config } = req.body;
         try {
             const measurementPoint = await collections.measurementPoints.findOne({
+                deleted: { $exists: false },
                 sensors: {
                     $elemMatch: {
                         sensorId: sensorId
@@ -92,6 +95,7 @@ measuringRouter.post(
             }
 
             const newSensor = [...measurementPoint.sensors];
+            config.created = dayjs().unix();
             newSensor[senzorIndex].config = config;
 
             const result = await collections.measurementPoints.updateOne(
@@ -105,11 +109,11 @@ measuringRouter.post(
 
             if (result.modifiedCount > 0) {
                 res.status(200).json({ ...config, errorMap: req.errorMap });
-            } else {
-                req.errorMap["500"] = `Failed to update Configuration of Sensor with id: ${sensorId}`;
-                res.status(500).json({ errorMap: req.errorMap });
                 return;
             }
+            req.errorMap["500"] = `Failed to update Configuration of Sensor with id: ${sensorId}`;
+            res.status(500).json({ errorMap: req.errorMap });
+            return;
         } catch (error) {
             if (error instanceof Error) {
                 console.error(error.message);
@@ -138,6 +142,7 @@ measuringRouter.post(
         const { sensorId, tempData } = req.body;
         try {
             const measurementPoint = await collections.measurementPoints.findOne({
+                deleted: { $exists: false },
                 sensors: {
                     $elemMatch: {
                         sensorId: sensorId
