@@ -1,20 +1,10 @@
 import { JSONSchemaType } from "ajv";
-import { VALIDATION_ERRORS } from "../../errors/errorMessages";
-import { SenzorConfiguration } from "../../models/MeasurementPoint";
+import { VALIDATION_ERRORS } from "../../../errors/errorMessages";
+import { SensorConfigurationDTO } from "../../../models/MeasurementPoint";
 
-
-const sensorConfigSchema: JSONSchemaType<SenzorConfiguration> = {
+const sensorConfigSchema: JSONSchemaType<SensorConfigurationDTO> = {
     type: 'object',
     properties: {
-        created: {
-            type: 'number',
-            nullable: false,
-            minimum: 1,
-            errorMessage: {
-                type: `${VALIDATION_ERRORS.TYPE} Number`,
-                minimum: `${VALIDATION_ERRORS.MIN} 1sec - Unix/Epoch time`,
-            },
-        },
         sendInterval: {
             type: 'number',
             nullable: false,

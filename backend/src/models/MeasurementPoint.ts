@@ -1,8 +1,6 @@
 import { ObjectId } from "mongodb";
 import { BaseEntity } from "./BaseEntity";
-
-export interface SenzorConfiguration {
-    created: number,
+export interface SensorConfigurationDTO {
     sendInterval: number,
     measureInterval: number,
     temperatureLimits: {
@@ -10,6 +8,9 @@ export interface SenzorConfiguration {
         cooling: number, // if temperature is above this number => start cooling
         heating: number // if temperature is below this number => start heating
     }
+}
+export interface SenzorConfiguration extends SensorConfigurationDTO {
+    created: number,
 }
 
 export type MeasuredQuantity = "temperature" | "acceleration";

@@ -1,5 +1,5 @@
 import { ajv, JSONSchemaType, VALIDATION_ERRORS, } from "../../ajv-validation/ajvInstance"
-import { updateSensorSchema, UpdateSensor } from "../other_schemas/sensor.schema";
+import { updateSensorSchema, UpdateSensor } from "./sensor/sensorAdd.schema";
 
 export interface UpdateMeasurementPoint {
     id: string,
