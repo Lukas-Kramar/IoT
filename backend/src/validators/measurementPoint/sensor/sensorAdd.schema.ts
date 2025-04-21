@@ -4,8 +4,6 @@ import { MeasuredQuantity, SensorConfigurationDTO } from "../../../models/Measur
 
 export interface AddSensor {
     measurementPointId: string,
-    sensorId: string,
-
     name: string,
     quantity: MeasuredQuantity,
     config: SensorConfigurationDTO,
@@ -16,18 +14,10 @@ export const addSensorScheme: JSONSchemaType<AddSensor> = {
     properties: {
         measurementPointId: {
             type: 'string',
-            format: 'uuid',
+            format: 'objectId',
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
-            },
-        },
-        sensorId: {
-            type: 'string',
-            format: 'uuid',
-            errorMessage: {
-                type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
+                format: `${VALIDATION_ERRORS.FORMAT} objectId`
             },
         },
         name: {
@@ -48,7 +38,7 @@ export const addSensorScheme: JSONSchemaType<AddSensor> = {
         },
         config: sensorConfigSchema,
     },
-    required: ["measurementPointId", "sensorId", 'name', 'quantity', 'config'],
+    required: ["measurementPointId", 'name', 'quantity', 'config'],
     additionalProperties: false,
 };
 

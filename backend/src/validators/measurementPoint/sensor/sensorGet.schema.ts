@@ -10,10 +10,10 @@ const sensorGetConfigurationParamsScheme: JSONSchemaType<sensorGetConfigurationP
     properties: {
         sensorId: {
             type: 'string',
-            format: 'uuid',
+            format: 'objectId',
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
+                format: `${VALIDATION_ERRORS.FORMAT} objectId`
             },
         },
     },
@@ -31,11 +31,11 @@ const sensorGetConfigurationQueryScheme: JSONSchemaType<sensorGetConfigurationQu
     properties: {
         measurementPointId: {
             type: 'string',
-            format: 'uuid',
+            format: 'objectId',
             nullable: true,
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
+                format: `${VALIDATION_ERRORS.FORMAT} objectId`
             },
         },
     },

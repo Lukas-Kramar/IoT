@@ -3,11 +3,15 @@ import { NextFunction, Response, Router } from 'express';
 import { collections } from '../services/database.service';
 
 import { DataAddRequest, dataAddValidator } from '../validators/measuring/dataAdd.validator';
+import { ObjectId } from 'mongodb';
+import { validateMeasurementPointGetJwtToken } from '../validators/measurementPoint/measurementPointGetJwtToken.schema';
+import { authorizeMpJWTToken } from '../authorization/authorizeMeasurementPoint';
 
 const measuringRouter = Router();
 
 measuringRouter.post(
     "/sendData",
+    authorizeMpJWTToken,
     dataAddValidator,
     async (req: DataAddRequest, res: Response, next: NextFunction) => {
         req.errorMap = req.errorMap ?? {};
@@ -18,13 +22,17 @@ measuringRouter.post(
             return;
         }
 
-        const { sensorId, tempData } = req.body;
+        const { measurementPointId, jwtToken, sensorId, tempData } = req.body;
+
         try {
             const measurementPoint = await collections.measurementPoints.findOne({
+                _id: new ObjectId(measurementPointId),
+                jwtToken: jwtToken,
                 deleted: { $exists: false },
                 sensors: {
                     $elemMatch: {
-                        sensorId: sensorId
+                        sensorId: sensorId,
+                        deleted: { $exists: false },
                     }
                 }
             });

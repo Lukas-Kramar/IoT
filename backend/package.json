@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "start": "nodemon --watch src --delay 1 --exec \"ts-node\" ./server.ts",
+    "build": "tsc",
     "test": "jest"
   },
   "dependencies": {

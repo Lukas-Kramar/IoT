@@ -1,11 +1,9 @@
 import { ajv, JSONSchemaType, VALIDATION_ERRORS, } from "../../ajv-validation/ajvInstance"
-import { updateSensorSchema, UpdateSensor } from "./sensor/sensorAdd.schema";
 
 export interface UpdateMeasurementPoint {
     id: string,
     name?: string,
     description?: string,
-    sensors?: UpdateSensor[]
 }
 
 const measurementPointUpdateSchema: JSONSchemaType<UpdateMeasurementPoint> = {
@@ -34,11 +32,6 @@ const measurementPointUpdateSchema: JSONSchemaType<UpdateMeasurementPoint> = {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
             },
         },
-        sensors: {
-            type: 'array',
-            items: updateSensorSchema,
-            nullable: true
-        }
     },
     required: ['id'],
     additionalProperties: false,

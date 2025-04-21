@@ -13,6 +13,9 @@ import { MeasurementPointAddRequest, measurementPointAddValidator } from '../val
 import { MeasurementPointDeleteRequest, measurementPointDeleteValidator } from '../validators/measurementPoint/measurementPointDelete.validator';
 import { MeasurementPointListRequest, measurementPointListValidator } from '../validators/measurementPoint/measurementPointList.validator';
 import { MeasurementPointUpdateRequest, measurementPointUpdateValidator } from '../validators/measurementPoint/measurementPointUpdate.validator';
+import { generateMpToken } from '../authorization/authorizeMeasurementPoint';
+import { MeasurementPointGetJwtTokenRequest, measurementPointGetJwtTokenValidator } from '../validators/measurementPoint/measurementPointGetJwtToken.validator';
+import { Policy } from '../models/Organisation';
 
 const measurementPointRouter = Router();
 
@@ -50,7 +53,7 @@ measurementPointRouter.post(
                 description,
                 ownerId: String(req.userId),
                 sensors: [],
-                influxMeasurement: "",
+                jwtToken: "",
                 created: dayjs().unix(),
             };
             const result = await collections.measurementPoints.insertOne(newMeasurementPoint);
@@ -58,7 +61,21 @@ measurementPointRouter.post(
                 res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Insert operation failed" } });
                 return;
             }
-            const createdMeasurementPoint = await collections.measurementPoints.findOne({ _id: result.insertedId });
+
+            const mpJwtToken = generateMpToken({ _id: result.insertedId.toString() });
+            const addTokenToMpResult = await collections.measurementPoints.updateOne(
+                { _id: result.insertedId },
+                { $set: { jwtToken: mpJwtToken } }
+            );
+            if (addTokenToMpResult.modifiedCount < 1) {
+                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to generate Access JWT token for created measurement point" } });
+                return;
+            }
+
+            const createdMeasurementPoint = await collections.measurementPoints.findOne(
+                { _id: result.insertedId, },
+                { projection: { jwtToken: 0 } }
+            );
             if (createdMeasurementPoint) {
                 res.status(201).json({ ...createdMeasurementPoint, errorMap: req.errorMap });
                 return;
@@ -113,6 +130,7 @@ measurementPointRouter.post(
                 res.status(202).json({ errorMap: req.errorMap });
                 return;
             }
+
             res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Delete operation failed" } });
 
         } catch (error) {
@@ -126,6 +144,7 @@ measurementPointRouter.post(
         }
     }
 );
+
 measurementPointRouter.get(
     "/get/:id",
     authorizeJWTToken,
@@ -139,14 +158,19 @@ measurementPointRouter.get(
             return;
         }
 
-        const id = req?.params?.id;
+        const id = req?.params?.id ?? "";
         const userId = req.userId ?? "";
 
         try {
-            const measurementPoint = await collections.measurementPoints.findOne({
-                _id: new ObjectId(id),
-                deleted: { $exists: false },
-            });
+            const measurementPoint = await collections.measurementPoints.findOne(
+                {
+                    _id: new ObjectId(id),
+                    deleted: { $exists: false },
+                },
+                {
+                    projection: { jwtToken: 0 }
+                }
+            );
             if (!measurementPoint) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Measurement Point with id: ${id}` } });
                 return;
@@ -174,6 +198,7 @@ measurementPointRouter.get(
         }
     }
 );
+
 measurementPointRouter.post(
     "/list",
     authorizeJWTToken,
@@ -187,14 +212,15 @@ measurementPointRouter.post(
             return;
         }
 
-        const { organisationId, pageInfo = { pageIndex: 0, pageSize: 10 }, order = "desc" } = req.body
+        const { organisationId, pageInfo = { pageIndex: 0, pageSize: 10 }, order = "desc" } = req.body;
+        const organisationObjectId = new ObjectId(organisationId);
         const userId = req.userId ?? "";
         try {
             const userIsInOrg = await collections.organisations.findOne({
-                _id: new ObjectId(organisationId),
+                _id: organisationObjectId,
                 deleted: { $exists: false },
                 "users.id": new ObjectId(userId),
-            })
+            },)
             if (!userIsInOrg) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Organisation with id: ${organisationId}` } });
                 return;
@@ -205,7 +231,7 @@ measurementPointRouter.post(
                     {
                         $match: {
                             deleted: { $exists: false },
-                            organisationId: organisationId,
+                            organisationId: organisationObjectId,
                         }
                     },
                     {
@@ -215,6 +241,7 @@ measurementPointRouter.post(
                                 { $sort: { name: (order === "desc" ? -1 : 1) } }, // Sort by name field
                                 { $skip: pageInfo.pageIndex * pageInfo.pageSize }, // Skip for pagination
                                 { $limit: pageInfo.pageSize }, // Limit to page size
+                                { $project: { jwtToken: 0 } }
                             ],
                         },
                     },
@@ -239,6 +266,7 @@ measurementPointRouter.post(
         }
     }
 );
+
 measurementPointRouter.post(
     "/update",
     authorizeJWTToken,
@@ -252,7 +280,7 @@ measurementPointRouter.post(
             return;
         }
 
-        const { id, name = "", description = "", sensors } = req.body;
+        const { id, name = "", description = "" } = req.body;
         const userId = req.userId ?? "";
         const query = {
             _id: new ObjectId(id),
@@ -284,35 +312,94 @@ measurementPointRouter.post(
             } = { updated: dayjs().unix() };
             if (name) { updateFields.name = name; }
             if (description) { updateFields.description = description; }
-            if (sensors) {
-                const senzorIds = sensors.map((sensor) => sensor.sensorId);
-                if (senzorIds.length !== new Set(senzorIds).size) {
-                    req.errorMap[400] = `Each sensor in sensors Array must have unique sensorId.`
-                    res.status(400).json({ erroMap: req.errorMap });
-                    return;
-                }
-                updateFields.sensors = sensors.map((sen) => {
-                    const newSensor: Sensor = { ...sen };
-                    const oldSensor = measurementPoint.sensors.find((odlSen: Sensor) => odlSen.sensorId === sen.sensorId)
-                    if (!oldSensor) { return newSensor; }
-                    return {
-                        ...newSensor,
-                        config: (sen.config.created > oldSensor.config.created) ? sen.config : oldSensor.config
-                    }
-                });
-            }
+            // if (sensors) {
+            //     const senzorIds = sensors.map((sensor) => sensor.sensorId);
+            //     if (senzorIds.length !== new Set(senzorIds).size) {
+            //         req.errorMap[400] = `Each sensor in sensors Array must have unique sensorId.`
+            //         res.status(400).json({ erroMap: req.errorMap });
+            //         return;
+            //     }
+            //     updateFields.sensors = sensors.map((sen) => {
+            //         const newSensor: Sensor = { ...sen };
+            //         const oldSensor = measurementPoint.sensors.find((odlSen: Sensor) => odlSen.sensorId === sen.sensorId)
+            //         if (!oldSensor) { return newSensor; }
+            //         return {
+            //             ...newSensor,
+            //             config: (sen.config.created > oldSensor.config.created) ? sen.config : oldSensor.config
+            //         }
+            //     });
+            // }
 
             const result = await collections.measurementPoints.updateOne(query, { $set: updateFields });
             if (result.modifiedCount < 1) {
                 res.status(404).json({ errorMap: { ...req.errorMap, ["500"]: `Failed to update Measurement Point` } });
                 return;
             }
-            const updatedMeasurementPoint = await collections.measurementPoints.findOne(query);
+            const updatedMeasurementPoint = await collections.measurementPoints.findOne(
+                query,
+                {
+                    projection: { jwtToken: 0 }
+                },
+            );
             if (updatedMeasurementPoint) {
                 res.status(200).json({ ...updatedMeasurementPoint, errorMap: req.errorMap });
             } else {
                 res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "Failed to fetch the updated Measurement Point" } });
             }
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error(error.message);
+                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: error.message } });
+            } else {
+                console.error("An unknown error occurred", error);
+                res.status(500).json({ errorMap: { ...req.errorMap, ["500"]: "An unknown error occurred" } });
+            }
+        }
+    }
+);
+
+measurementPointRouter.get(
+    "/getJwtToken",
+    authorizeJWTToken,
+    measurementPointGetJwtTokenValidator,
+    async (req: MeasurementPointGetJwtTokenRequest, res: Response, next: NextFunction) => {
+        req.errorMap = req.errorMap ?? {};
+        if (!collections.measurementPoints || !collections.organisations) {
+            console.warn("DB Collection MeasurementPoints or Organisations has not been initilized: ");
+            req.errorMap["500"] = "DB is not in correct state";
+            res.status(500).json(req.errorMap);
+            return;
+        }
+        const userId = req.userId ?? "";
+        const { _id } = req.body;
+
+        try {
+            const measurementPoint = await collections.measurementPoints.findOne(
+                {
+                    _id: new ObjectId(_id),
+                    deleted: { $exists: false },
+                },
+            );
+            if (!measurementPoint) {
+                res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Measurement Point with id: ${_id}` } });
+                return;
+            }
+
+            const userIsInOrg = await collections.organisations.findOne({
+                _id: new ObjectId(measurementPoint.organisationId),
+                deleted: { $exists: false },
+                "users.id": new ObjectId(userId),
+                "users.policy": Policy.Admin,
+            })
+            if (!userIsInOrg) {
+                res.status(404).json({ errorMap: { ...req.errorMap, ["404"]: `Unable to find matching Measurement Point with id: ${_id}` } });
+                return;
+            }
+
+            res.status(200).json({
+                jwtToken: measurementPoint.jwtToken,
+                errorMap: req.errorMap
+            });
         } catch (error) {
             if (error instanceof Error) {
                 console.error(error.message);

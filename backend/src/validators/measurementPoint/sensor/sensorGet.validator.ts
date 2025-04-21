@@ -4,13 +4,13 @@ import { parseErrors } from '../../../errors/ajvError';
 import { sensorGetConfigurationParams, sensorGetConfigurationQuery, validateSensorGetConfigurationParams, validateSensorGetConfigurationQuery } from './sensorGet.schema';
 import { AuthorizationRequest } from '../../../authorization/authorizeUser';
 
-export interface SensorGetConfigurationRequest extends AuthorizationRequest {
+export interface SensorGetRequest extends AuthorizationRequest {
     params: sensorGetConfigurationParams;
     query: sensorGetConfigurationQuery,
 }
 
 export const sensorGetConfiguratinValidator = async (
-    req: SensorGetConfigurationRequest,
+    req: SensorGetRequest,
     res: Response,
     next: NextFunction
 ) => {

@@ -1,15 +1,13 @@
-import { ajv, JSONSchemaType, VALIDATION_ERRORS, } from "../../ajv-validation/ajvInstance"
-import { TemperatureData } from "../../models/Data";
-import temperatureDataSchema from "../other_schemas/temperatureData.scheme";
 
-export interface DataAdd {
+import { ajv, JSONSchemaType, VALIDATION_ERRORS, } from "../../../ajv-validation/ajvInstance"
+
+export interface SensorGetConfigSchema {
     measurementPointId: string,
-    jwtToken: string,
     sensorId: string,
-    tempData: TemperatureData[],
+    jwtToken: string,
 }
 
-const dataAddScheme: JSONSchemaType<DataAdd> = {
+const sensorGetConfigSchema: JSONSchemaType<SensorGetConfigSchema> = {
     type: 'object',
     properties: {
         measurementPointId: {
@@ -34,16 +32,9 @@ const dataAddScheme: JSONSchemaType<DataAdd> = {
                 format: `${VALIDATION_ERRORS.FORMAT} objectId`,
             },
         },
-        tempData: {
-            type: 'array',
-            items: temperatureDataSchema,
-            errorMessage: {
-                type: `${VALIDATION_ERRORS.TYPE} Array`,
-            },
-        },
     },
-    required: ["measurementPointId", "jwtToken", 'sensorId', 'tempData'],
+    required: ["measurementPointId", "jwtToken", 'sensorId'],
     additionalProperties: false,
 };
 
-export const validateAddData = ajv.compile(dataAddScheme);
+export const validateSensorGetConfig = ajv.compile(sensorGetConfigSchema);

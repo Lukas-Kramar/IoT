@@ -16,18 +16,18 @@ const sensorUpdateSchema: JSONSchemaType<SensorUpdateSchema> = {
     properties: {
         measurementPointId: {
             type: 'string',
-            format: 'uuid',
+            format: 'objectId',
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
+                format: `${VALIDATION_ERRORS.FORMAT} objectId`
             },
         },
         sensorId: {
             type: 'string',
-            format: 'uuid',
+            format: 'objectId',
             errorMessage: {
                 type: `${VALIDATION_ERRORS.TYPE} String`,
-                format: `${VALIDATION_ERRORS.FORMAT} UUID`
+                format: `${VALIDATION_ERRORS.FORMAT} objectId`
             },
         },
         name: {

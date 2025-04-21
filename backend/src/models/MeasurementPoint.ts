@@ -29,6 +29,6 @@ export default interface MeasurementPoint extends BaseEntity {
     ownerId: string,
     name: string,
     description: string,
-    influxMeasurement: string,
+    jwtToken: string,
     sensors: Sensor[],
 }
