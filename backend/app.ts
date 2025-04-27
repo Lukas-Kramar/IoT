@@ -1,6 +1,7 @@
 import createError from 'http-errors';
 import express from 'express';
 import logger from 'morgan';
+import cors from 'cors';
 import 'dotenv/config';
 
 import userRouter from './src/routes/userRouter';
@@ -12,6 +13,13 @@ import measuringRouter from './src/routes/measuringRouter';
 import sensorRouter from './src/routes/sensorRouter';
 
 const app = express();
+
+// Enable CORS for requests from http://localhost:5173
+app.use(cors({
+    origin: 'http://localhost:5173', // Allow requests from React app
+    methods: ['GET', 'POST'], // Specify allowed HTTP methods
+    credentials: true // Allow cookies and credentials if needed
+}));
 
 app.use(logger('dev'));
 app.use(express.json());
