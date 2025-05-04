@@ -1,35 +1,27 @@
-import { useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import { Navbar, Nav, Button, ButtonGroup, DropdownButton, Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
 
-import organisationRequests, { Organisation } from '../../../API/requests/organisationRequests'
-import CreateProjectModal from './modals/CreateProjectModal';
-import { useMainContext } from '../../customHooks/useMainContext';
+import CreateProjectModal from './modals/CreateOrganisation';
+import { useOrganisationContext } from '../../customHooks/useOrganisationsContext';
 import { useLoggedUserContext } from '../../customHooks/useLoggedUserContext';
 
 const Menu = () => {
 
     const navigate = useNavigate();
     const { userData } = useLoggedUserContext();
-    const { selectedOrganisation, setSelectedOrganisation } = useMainContext();
+    const {
+        isLoading,
+        organisations,
+        selectedOrganisation, setSelectedOrganisation,
+    } = useOrganisationContext();
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [organisations, setOrganisations] = useState<Organisation[]>([]);
     const [modalVersion, setModalVersion] = useState<'create-organisation' | string>('');
 
-    useEffect(() => {
-        const fetchOrganisations = async () => {
-            try {
-                setIsLoading(true);
-                const response = await organisationRequests.listOrganisation({ pageInfo: { pageIndex: 0, pageSize: 40 }, order: "asc" });
-                setOrganisations(Array.isArray(response.organisations) ? response.organisations : [])
-            } catch (err) {
-                console.error("fetchOrganisations - error: ", err);
-            } finally { setIsLoading(false); }
-        }
-        fetchOrganisations();
-    }, []);
+    console.log("Menu - re-rednering: ", selectedOrganisation);
+
+
 
     return (
         <>
@@ -87,4 +79,4 @@ const Menu = () => {
     );
 };
 
-export default Menu;
+export default memo(Menu);

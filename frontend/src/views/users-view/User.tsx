@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Button, Row, Col, Container, Alert } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
-import {User} from "../../models/UserModel"
+
 import { useLoggedUserContext } from '../../customHooks/useLoggedUserContext';
+import { Policy, User } from '../../../API/requests/userRequests';
 
 const UserProfile = () => {
     const { userId } = useParams();
@@ -13,6 +14,7 @@ const UserProfile = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // TODO - handle form submission logic
         // Implement the save logic here, e.g., sending the updated user data to the server
         console.log('User data saved:', editedUser);
     };
@@ -36,30 +38,12 @@ const UserProfile = () => {
                     <Form onSubmit={handleSubmit}>
                         <Row className="mb-3">
                             <Form.Group as={Col} controlId="formName">
-                                <Form.Label>Name</Form.Label>
+                                <Form.Label>First Name</Form.Label>
                                 <Form.Control
                                     type="text"
                                     name="name"
-                                    value={editedUser.name}
-                                    onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })}
-                                />
-                            </Form.Group>
-                            <Form.Group as={Col} controlId="formSurname">
-                                <Form.Label>Surname</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    name="surname"
-                                    value={editedUser.surname}
-                                    onChange={(e) => setEditedUser({ ...editedUser, surname: e.target.value })}
-                                />
-                            </Form.Group>
-                            <Form.Group as={Col} controlId="formUsername">
-                                <Form.Label>Username</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    name="username"
-                                    value={editedUser.username}
-                                    onChange={(e) => setEditedUser({ ...editedUser, username: e.target.value })}
+                                    value={editedUser.firstName}
+                                    onChange={(e) => setEditedUser({ ...editedUser, firstName: e.target.value })}
                                 />
                             </Form.Group>
                         </Row>
@@ -75,22 +59,20 @@ const UserProfile = () => {
                         {/* TODO - if currentLogedUser role === "ADMIN" */}
                         <Row>
                             <Col sm={4}>
-                                { (
+                                {(
                                     <Form.Group controlId="formRole" className="mb-3">
                                         <Form.Label>Role</Form.Label>
                                         <Form.Select
-                                            disabled={userData?._id === editedUser._id}
+                                            disabled={!userData || userData.role !== Policy.Admin || userData?._id === editedUser._id}
                                             name="role"
                                             value={editedUser.role}
                                             onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value === "ADMIN" || value === "MEMBER") {
-                                                    setEditedUser({ ...editedUser, role: value });
-                                                }
+                                                const value = Number(e.target.value);
+                                                setEditedUser({ ...editedUser, role: value === Policy.Admin ? Policy.Admin : Policy.Member });
                                             }}
                                         >
-                                            <option value="ADMIN">Admin</option>
-                                            <option value="MEMBER">Member</option>
+                                            <option value={Policy.Admin}>Admin</option>
+                                            <option value={Policy.Member}>Member</option>
                                         </Form.Select>
                                     </Form.Group>
                                 )}
