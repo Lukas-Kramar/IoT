@@ -1,25 +1,32 @@
 #include <LiquidCrystal.h>
 #include "globalConstants.h"
+#include "tempConfig.h"
 #include "scheduler.h"
 #include "tempStatus.h"
+#include "arduino.h"
 
 namespace LcdControler {
   LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-  static const int LcdStateInactive = 0;
-  static const int LcdStateStatus = 1;
-  static const int LcdStateTemp = 2;
-  static const int LcdStateCoolerSetting = 3;
-  static const int LcdStateCoolerSettingUpdate = 4;
-  static const int LcdStateHeaterSetting = 5;
-  static const int LcdStateHeaterSettingUpdate = 6;
 
   class LcdControler {
     private:
-      Scheduler& SchedulerInstace;
+      Scheduler* SchedulerInstance;
+      TempConfig* TempConfigInstance;
+      TempStatus* TempStatusInstance;
+      static const int LcdStateInactive = 0;
+      static const int LcdStateStatus = 1;
+      static const int LcdStateTemp = 2;
+      static const int LcdStateCoolerSetting = 3;
+      static const int LcdStateCoolerSettingUpdate = 4;
+      static const int LcdStateHeaterSetting = 5;
+      static const int LcdStateHeaterSettingUpdate = 6;
       int lcdStateId = LcdStateInactive;
+      float tempSettingUpdateMax;
+      float tempSettingUpdateMin;
+      float tempSettingUpdate;
       
       bool checkAndSetLcdSleep() {
-        if (SchedulerInstance.IsScheduleElapsed(Scheduler::Scheduler::SchedulerScreenShutoffEventId)) {
+        if (SchedulerInstance->IsScheduleElapsed(SchedulerScreenShutoffEventId)) {
           switch (lcdStateId) {
             case LcdStateCoolerSettingUpdate:
             case LcdStateHeaterSettingUpdate:
@@ -38,7 +45,7 @@ namespace LcdControler {
       }
 
       void delayLcdSleep() {
-        schedulerEvents[SchedulerScreenShutoffEventId].SetNextRunOffset(120);
+        SchedulerInstance->SetNextRunOffsetFromCurrentTime(SchedulerMeasurmentEventId, 120);
       }
 
       void firstDrawLcdStatus() {
@@ -50,15 +57,16 @@ namespace LcdControler {
 
       void redrawLcdStatus() {
         lcd.setCursor(0, 1);
-        switch (tempStateId) {
-          case TempState.Heater:
+        switch(TempStatusInstance->TempStateId)
+        {
+          case TempStateHeater:
             lcd.print("Heating");
             break;
-          case TempState.Cooler:
+          case TempStateCooler:
             lcd.print("Cooling");
             break;
-          case TempState.NoAction:
           default:
+          case TempStateNoAction:
             lcd.print("Idle   ");
             break;
         }
@@ -120,18 +128,18 @@ namespace LcdControler {
         return;
       }
       void exitLcdSettingUpdate() {
-        ParamData params[] = { ParamData(false, String(tempCoolerStart), "min"), ParamData(false, String(tempHeaterStart), "max"), ParamData(false, String(reportMeasurementDelay), "interval") };
-        sendSerialMessage(serialCauseUpdateRange, params, sizeof params / sizeof params[0]);
         lcd.noBlink();
         return;
       }
     public:
-      LcdControler(Scheduler& scheduler) {
-        SchedulerInstace = scheduler;
+      LcdControler(const Scheduler* scheduler, const TempConfig* tempConfig, const TempStatus* tempStatus) {
+        SchedulerInstance = scheduler;
+        TempConfigInstance = tempConfig;
+        TempStatusInstance = tempStatus;
         lcd.begin(16, 2);
         lcd.noDisplay();
-      }
-      void UpdateLcd(TempStatus::TempStatus tempStatus) {
+      };
+      void UpdateLcd() {
         int buttonMainVal = analogRead(pinButtonMain);
         bool buttonMainState = buttonMainVal >= 256;
         int buttonPlusVal = analogRead(pinButtonPlus);
@@ -141,10 +149,10 @@ namespace LcdControler {
         bool buttonPressed = true;
         switch (lcdStateId) {
           default:
-          case LcdState.Inactive:
+          case LcdStateInactive:
             if (buttonMainState || buttonPlusState || buttonMinusState) {
               lcd.display();
-              lcdStateId = LcdState.Status;
+              lcdStateId = LcdStateStatus;
               firstDrawLcdStatus();
               digitalWrite(pinLcdV0, HIGH);
               digitalWrite(pinLcdLedPlus, HIGH);
@@ -152,51 +160,50 @@ namespace LcdControler {
               buttonPressed = false;
             }
             break;
-          case LcdState.Status:
+          case LcdStateStatus:
             if (buttonMainState) {
-              lcdStateId = LcdState.Temp;
-              firstDrawLcdTemp(tempStatus.ThermTemp);
+              lcdStateId = LcdStateTemp;
+              firstDrawLcdTemp(TempStatusInstance->ThermTemp);
             } else if (buttonPlusState) {
-              lcdStateId = LcdState.HeaterSetting;
-              firstDrawLcdSetting("Heating", tempHeaterStart);
+              lcdStateId = LcdStateHeaterSetting;
+              firstDrawLcdSetting("Heating", TempConfigInstance->GetTempHeaterStart());
             } else if (buttonMinusState) {
-              lcdStateId = LcdState.CoolerSetting;
-              firstDrawLcdSetting("Cooling", tempCoolerStart);
+              lcdStateId = LcdStateCoolerSetting;
+              firstDrawLcdSetting("Cooling", TempConfigInstance->GetTempCoolerStart());
             } else {
               buttonPressed = false;
-              if (tempStatus.TempStateChanged) {
+              if (TempStatusInstance->TempStateChanged) {
                 redrawLcdStatus();
               }
             }
             break;
-          case LcdState.Temp:
+          case LcdStateTemp:
             if (buttonMainState) {
-              lcdStateId = LcdState.Status;
+              lcdStateId = LcdStateStatus;
               firstDrawLcdStatus();
             } else if (buttonPlusState) {
-              lcdStateId = LcdState.HeaterSetting;
-              firstDrawLcdSetting("Heating", tempHeaterStart);
+              lcdStateId = LcdStateHeaterSetting;
+              firstDrawLcdSetting("Heating", TempConfigInstance->GetTempHeaterStart());
             } else if (buttonMinusState) {
-              lcdStateId = LcdState.CoolerSetting;
-              firstDrawLcdSetting("Cooling", tempCoolerStart);
+              lcdStateId = LcdStateCoolerSetting;
+              firstDrawLcdSetting("Cooling", TempConfigInstance->GetTempCoolerStart());
             } else {
               buttonPressed = false;
-              redrawLcdTemp(tempStatus.ThermTemp);
+              redrawLcdTemp(TempStatusInstance->ThermTemp);
             }
             break;
-          case LcdState.CoolerSetting:
+          case LcdStateCoolerSetting:
             if (buttonMainState) {
-              lcdStateId = LcdState.Status;
+              lcdStateId = LcdStateStatus;
               firstDrawLcdStatus();
             } else if (buttonPlusState || buttonMinusState) {
               tempSettingUpdateMax = maxTemp;
-              tempSettingUpdateMin = tempHeaterEnd + 5;
-              lcdStateId = LcdState.CoolerSettingUpdate;
+              tempSettingUpdateMin = TempConfigInstance->GetTempHeaterEnd() + 5;
+              lcdStateId = LcdStateCoolerSettingUpdate;
+              tempSettingUpdate = TempConfigInstance->GetTempCoolerStart();
               if (buttonPlusState) {
-                tempSettingUpdate = tempCoolerStart;
                 changeTempSettingUpdate(1.0);
               } else {
-                tempSettingUpdate = tempCoolerStart;
                 changeTempSettingUpdate(-1.0);
               }
               firstDrawLcdSettingUpdate();
@@ -204,19 +211,18 @@ namespace LcdControler {
               buttonPressed = false;
             }
             break;
-          case LcdState.HeaterSetting:
+          case LcdStateHeaterSetting:
             if (buttonMainState) {
-              lcdStateId = LcdState.Status;
+              lcdStateId = LcdStateStatus;
               firstDrawLcdStatus();
             } else if (buttonPlusState || buttonMinusState) {
-              lcdStateId = LcdState.HeaterSettingUpdate;
-              tempSettingUpdateMax = tempCoolerEnd - 5;
+              lcdStateId = LcdStateHeaterSettingUpdate;
+              tempSettingUpdateMax = TempConfigInstance->GetTempCoolerEnd() - 5;
               tempSettingUpdateMin = minTemp;
+              tempSettingUpdate = TempConfigInstance->GetTempHeaterStart();
               if (buttonPlusState) {
-                tempSettingUpdate = tempHeaterStart;
                 changeTempSettingUpdate(1.0);
               } else {
-                tempSettingUpdate = tempHeaterStart;
                 changeTempSettingUpdate(-1.0);
               }
               firstDrawLcdSettingUpdate();
@@ -224,12 +230,10 @@ namespace LcdControler {
               buttonPressed = false;
             }
             break;
-          case LcdState.CoolerSettingUpdate:
+          case LcdStateCoolerSettingUpdate:
             if (buttonMainState) {
-              lcdStateId = LcdState.CoolerSetting;
-              tempCoolerStart = tempSettingUpdate;
-              writeFloatToEEPROM(adressTempCoolerStart, tempCoolerStart);
-              tempCoolerEnd = tempSettingUpdate - 5;
+              lcdStateId = LcdStateCoolerSetting;
+              TempConfigInstance->SetTempCoolerStart(tempSettingUpdate);
               exitLcdSettingUpdate();
             } else if (buttonPlusState) {
               changeTempSettingUpdate(1.0);
@@ -241,12 +245,10 @@ namespace LcdControler {
               buttonPressed = false;
             }
             break;
-          case LcdState.HeaterSettingUpdate:
+          case LcdStateHeaterSettingUpdate:
             if (buttonMainState) {
-              lcdStateId = LcdState.HeaterSetting;
-              tempHeaterStart = tempSettingUpdate;
-              writeFloatToEEPROM(adressTempHeaterStart, tempHeaterStart);
-              tempHeaterEnd = tempSettingUpdate + 5;
+              lcdStateId = LcdStateHeaterSetting;
+              TempConfigInstance->SetTempHeaterStart(tempSettingUpdate);
               exitLcdSettingUpdate();
             } else if (buttonPlusState) {
               changeTempSettingUpdate(1.0);
@@ -265,5 +267,5 @@ namespace LcdControler {
           checkAndSetLcdSleep();
         }
       }
-    }
+    };
 }

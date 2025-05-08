@@ -1,3 +1,7 @@
+#define TempStateNoAction 0
+#define TempStateHeater 1
+#define TempStateCooler 2
+
 namespace TempStatus
 {
   class TempStatus
@@ -5,10 +9,10 @@ namespace TempStatus
     public:
       float ThermTemp;
       bool TempStateChanged;
-      TempStatus(float thermTemp, bool tempStateChanged)
+      int TempStateId;
+      TempStatus()
       {
-        ThermTemp = thermTemp;
-        TempStateChanged = tempStateChanged;
+        TempStateId = TempStateNoAction;
       } 
   };
 }

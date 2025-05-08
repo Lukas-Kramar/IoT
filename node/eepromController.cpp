@@ -1,9 +1,9 @@
 #include <EEPROM.h>
 #include <stdlib.h>
 
-namespace EepromWriter
+namespace EepromController
 {
-  class EepromWriter
+  class EepromController
   {
     private:
       static const int adressTempCoolerStart = 0;
@@ -49,6 +49,11 @@ namespace EepromWriter
       }
       void writeFloatToEEPROM(int adress, float value)
       {
+        float currentValue;
+        if(readFloatFromEEPROM(adress, &currentValue) && currentValue == value)
+        {
+          return;
+        }
         EEPROM_FLOAT eepromValue;
         eepromValue.number = value;
         for(int offset = 0;offset < 4; offset++)
@@ -59,7 +64,6 @@ namespace EepromWriter
 
       bool readIntFromEEPROM(int adress, int* outputValue)
       {
-
         bool allNoValue = true;
         
         EEPROM_INT eepromValue;
@@ -85,6 +89,11 @@ namespace EepromWriter
 
       void writeIntToEEPROM(int adress, int value)
       {
+        int currentValue;
+        if(readIntFromEEPROM(adress, &currentValue) && currentValue == value)
+        {
+          return;
+        }
         EEPROM_INT eepromValue;
         eepromValue.number = value;
         for(int offset = 0;offset < 2; offset++)
@@ -94,7 +103,7 @@ namespace EepromWriter
       }
 
     public:
-      EepromWriter(){}
+      EepromController(){}
       float readTempCoolerStart()
       {
         float tempCoolerStart;

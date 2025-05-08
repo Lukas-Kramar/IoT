@@ -1,11 +1,17 @@
-const int pinCooler;
-const int pinHeater;
-const int pinLcdV0;
-const int pinLcdLedPlus;
+#ifndef GLOBALCONSTANTS_H
+#define GLOBALCONSTANTS_H
 
-const int pinThermometer;
-const int pinButtonMain;
-const int pinButtonPlus;
-const int pinButtonMinus;
-const float minTemp;
-const float maxTemp;
+#include <Arduino.h>
+#define pinCooler 6
+#define pinHeater 7
+#define pinLcdV0 9
+#define pinLcdLedPlus 8
+#define pinThermometer A5
+#define pinButtonMain A4
+#define pinButtonPlus A3
+#define pinButtonMinus A2
+#define minTemp -50
+#define tempPerVolt 100
+#define maxTemp minTemp + 5 * tempPerVolt
+
+#endif

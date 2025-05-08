@@ -1,25 +1,29 @@
 #include <Arduino.h>
 
-namespace NScheduler
+#define SchedulerScreenShutoffEventId 1
+#define SchedulerMeasurmentEventId 2
+#define SchedulerSendMeasurmentEventId 3
+#define SchdulerMaxSeconds UINT64_MAX/1000
+
+namespace Scheduler
 {
   class SchedulerEvent {
     private:
       bool isActive = false;
       unsigned long sheduledTime = 0;
-      static const unsigned long maxMilis = UINT32_MAX;
     public:
       SchedulerEvent(){};
       void CorrectSchedulerOverflow()
       {
         if(isActive)
         {
-          if(sheduledTime > maxMilis)
+          if(sheduledTime > SchdulerMaxSeconds)
           {
-            sheduledTime = sheduledTime - maxMilis;
+            sheduledTime = sheduledTime - SchdulerMaxSeconds;
           }
           else
           {
-            //scheduled time was less than maxMilis, run it (may run it next loop in the rare case where sheduled time is 0)
+            //scheduled time was less than SchdulerMaxSeconds, run it (may run it next loop in the rare case where sheduled time is 0)
             sheduledTime = 0;
           }
         }
@@ -59,16 +63,17 @@ namespace NScheduler
       SchedulerEvent schedulerEvents[3];
       static const int schedulerSensitivity = 1000; 
       unsigned long lastSchedulerTimestamp = 0;
-      unsigned long curentSchedulerTimestamp;   
+      unsigned long curentSchedulerTimestamp = 0;   
     public:
-      static const int SchedulerScreenShutoffEventId = 0;
-      static const int SchedulerMeasurmentEventId = 1;
-      static const int SchedulerSendMeasurmentEventId = 2;
       Scheduler()
       {
-        schedulerEvents[Scheduler::SchedulerScreenShutoffEventId] = SchedulerEvent();
-        schedulerEvents[Scheduler::SchedulerMeasurmentEventId] = SchedulerEvent();
-        schedulerEvents[Scheduler::SchedulerSendMeasurmentEventId] = SchedulerEvent();
+        schedulerEvents[SchedulerScreenShutoffEventId] = SchedulerEvent();
+        schedulerEvents[SchedulerMeasurmentEventId] = SchedulerEvent();
+        schedulerEvents[SchedulerSendMeasurmentEventId] = SchedulerEvent();
+      }
+      unsigned long GetCurrentTimestamp()
+      {
+        return curentSchedulerTimestamp;
       }
       void SchedulerUpdate()
       {
