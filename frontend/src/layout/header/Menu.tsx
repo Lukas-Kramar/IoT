@@ -14,7 +14,7 @@ const Menu = () => {
     const {
         isLoading,
         organisations,
-        selectedOrganisation, setSelectedOrganisation,
+        selectedOrganisation, selectOrganisation,
     } = useOrganisationContext();
 
     const [modalVersion, setModalVersion] = useState<'create-organisation' | string>('');
@@ -36,11 +36,12 @@ const Menu = () => {
                     title={selectedOrganisation?.name ?? "Create Organisation..."}
                     onSelect={(selectedKey) => {
                         if (!selectedKey) { return; }
-                        if (selectedKey === "create") { setModalVersion('create-organisation') }
-                        else {
-                            setSelectedOrganisation(organisations?.find((org) => org._id === selectedKey) ?? null);
-                            navigate('/');
+                        if (selectedKey === "create") {
+                            setModalVersion('create-organisation');
+                            return;
                         }
+                        selectOrganisation(organisations?.find((org) => org._id === selectedKey) ?? null);
+                        navigate('/');
                     }}
                 >
                     {organisations?.map((organisation) => (

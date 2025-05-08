@@ -10,13 +10,13 @@ interface Props {
     setModalVersion: React.Dispatch<React.SetStateAction<DashboardModalVersion>>,
     editedOrganisation: Organisation,
 }
-const DeleteOrganisationModal = (props: Props) => {
+const OrganisationDeleteModal = (props: Props) => {
     const {
         modalVersion, setModalVersion,
         editedOrganisation
     } = props;
 
-    const { deleteOrganisation, setSelectedOrganisation } = useOrganisationContext();
+    const { deleteOrganisation, selectOrganisation } = useOrganisationContext();
 
     const [isLoading, setIsLoading] = useState(false);
     const [alerts, setAlerts] = useState<string[]>([]);
@@ -26,7 +26,7 @@ const DeleteOrganisationModal = (props: Props) => {
             setIsLoading(true);
             const result = await organisationRequests.deleteOrganisation(editedOrganisation._id);
             if (result) {
-                setSelectedOrganisation(null);
+                selectOrganisation(null);
                 deleteOrganisation(editedOrganisation._id);
                 setModalVersion("");
                 return;
@@ -39,6 +39,7 @@ const DeleteOrganisationModal = (props: Props) => {
         }
         finally { setIsLoading(false); }
     }
+
 
     return (
         <DefaultModal
@@ -65,4 +66,4 @@ const DeleteOrganisationModal = (props: Props) => {
     );
 }
 
-export default DeleteOrganisationModal;
+export default OrganisationDeleteModal;

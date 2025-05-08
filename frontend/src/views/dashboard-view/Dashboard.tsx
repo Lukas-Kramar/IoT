@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Badge, Button, Col, Container, Row, Spinner, Table } from "react-bootstrap";
+import { Alert, Badge, Button, Card, Col, Container, Row, Spinner, Table } from "react-bootstrap";
 import dayjs from "dayjs";
-import organisationRequests, { Organisation } from "../../../API/requests/organisationRequests";
+import measurementPointsRequests, { MeasurementPoint } from "../../../API/requests/measurementPointsRequests";
 import OrganisationCard from "./components/organisationCard/OrganisationCard";
 import { useOrganisationContext } from "../../customHooks/useOrganisationsContext";
-import DeleteOrganisationModal from "./modals/DeleteOrganisationModal";
-import UpdateOrganisationModal from "./modals/UpdateOrganisationModal";
+import OrganisationDeleteModal from "./modals/OrganisationDeleteModal";
+import OrganisationUpdateModal from "./modals/OrganisationUpdateModal";
+import { Organisation } from "../../../API/requests/organisationRequests";
+import MeasurementPointCard from "./components/measurementPointCard.tsx/MeasurementPointCard";
+import MeasurementPointAddModal from "./modals/MeasurementPointAddModal";
+import MeasurementPointDeleteModal from "./modals/MeasurementPointDeleteModal";
+import MeasurementPointUpdateModal from "./modals/MeasurementPointUpdateModal";
 
-export type DashboardModalVersion = 'update-organisation' | 'delete-organisation' | '';
+export type DashboardModalVersion = 'update-organisation' | 'delete-organisation' | 'add-measurement-point' | 'update-measurement-point' | 'delete-measurement-point' | '';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -17,10 +22,64 @@ const Dashboard = () => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [modalVersion, setModalVersion] = useState<DashboardModalVersion>('');
-    const [measurementPoints, setMeasurementPoints] = useState<[]>([]);
+    const [alerts, setAlerts] = useState<{ type: string, message: string }[]>([]);
+
+    const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([]);
+    const [editedMeasurementPoint, setEditedMeasurementPoint] = useState<MeasurementPoint | null>(null);
 
 
 
+    const acknowladgeAddedMeasurementPoint = (measurementPoint: MeasurementPoint) => {
+        setMeasurementPoints([...measurementPoints, measurementPoint]);
+    }
+    const acknowladgeUpdatedMeasurementPoint = (measurementPoint: MeasurementPoint) => {
+        setMeasurementPoints((prevMeasurementPoints) => {
+            const index = prevMeasurementPoints.findIndex((mp) => mp._id === measurementPoint._id);
+            if (index === -1) { return prevMeasurementPoints; }
+            const newMeasurementPoints = [...prevMeasurementPoints];
+            newMeasurementPoints[index] = measurementPoint;
+            return newMeasurementPoints;
+        });
+    }
+    const acknowladgeDeletedMeasurementPoint = (measurementPointId: string) => {
+        setMeasurementPoints((prevMeasurementPoints) => {
+            const index = prevMeasurementPoints.findIndex((mp) => mp._id === measurementPointId);
+            if (index === -1) { return prevMeasurementPoints; }
+            const newMeasurementPoints = [...prevMeasurementPoints];
+            newMeasurementPoints.splice(index, 1);
+            return newMeasurementPoints;
+        });
+    }
+
+
+    useEffect(() => {
+        const fetchMeasurementPoints = async (selectedOrganisation: Organisation) => {
+            try {
+                setIsLoading(true);
+                const response = await measurementPointsRequests.listMeasurementPoints({
+                    organisationId: selectedOrganisation._id,
+                    pageInfo: {
+                        pageIndex: 0,
+                        pageSize: 100,
+                    },
+                })
+                setMeasurementPoints(response.measurementPoints);
+            } catch (err) {
+                console.error("Error fetching measurement points:", err);
+                setAlerts((prevAlerts) => [
+                    ...prevAlerts,
+                    { type: 'danger', message: 'Error fetching measurement points' }
+                ]);
+            }
+            finally { setIsLoading(false); }
+        }
+
+        if (!selectedOrganisation) {
+            setMeasurementPoints([]);
+            return;
+        }
+        fetchMeasurementPoints(selectedOrganisation);
+    }, [selectedOrganisation]);
 
     if (!selectedOrganisation) {
         return (
@@ -33,18 +92,45 @@ const Dashboard = () => {
 
     return (
         <>
+            {/* ORGANISATION MODALS */}
             {modalVersion === 'update-organisation' && (
-                <UpdateOrganisationModal
+                <OrganisationUpdateModal
                     modalVersion={modalVersion}
                     setModalVersion={setModalVersion}
                     editedOrganisation={selectedOrganisation}
                 />
             )}
             {modalVersion === 'delete-organisation' && (
-                <DeleteOrganisationModal
+                <OrganisationDeleteModal
                     modalVersion={modalVersion}
                     setModalVersion={setModalVersion}
                     editedOrganisation={selectedOrganisation}
+                />
+            )}
+
+            {/* MEASUREMENT POINT MODALS */}
+            {modalVersion == 'add-measurement-point' && (
+                <MeasurementPointAddModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    acknowladgeAddedMeasurementPoint={acknowladgeAddedMeasurementPoint}
+                    selectedOrganisationId={selectedOrganisation._id}
+                />
+            )}
+            {(modalVersion === 'update-measurement-point' && editedMeasurementPoint) && (
+                <MeasurementPointUpdateModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    editedMeasurementPoint={editedMeasurementPoint}
+                    acknowladgeUpdatedMeasurementPoint={acknowladgeUpdatedMeasurementPoint}
+                />
+            )}
+            {(modalVersion === 'delete-measurement-point' && editedMeasurementPoint) && (
+                <MeasurementPointDeleteModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    editedMeasurementPoint={editedMeasurementPoint}
+                    acknowladgeDeletedMeasurementPoint={acknowladgeDeletedMeasurementPoint}
                 />
             )}
 
@@ -55,7 +141,7 @@ const Dashboard = () => {
                         <p className="text-muted">Organisation ID: {selectedOrganisation._id}</p>
                         <p>{selectedOrganisation.description}</p>
                     </Col>
-                    <Col sm={2} className="d-flex justify-content-end gap-2 align-items-center">
+                    <Col sm={2} className="d-flex justify-content-end gap-2 align-items-start">
                         <Button
                             variant="warning"
                             onClick={() => setModalVersion('update-organisation')}
@@ -71,11 +157,54 @@ const Dashboard = () => {
                             <span className="ms-1">Delete</span>
                         </Button>
                     </Col>
-
                 </Row>
 
+                {alerts.length > 0 && (
+                    <Row className="mt-4">
+                        <Col sm={12}>
+                            {alerts.map((alert, index) => (
+                                <Alert
+                                    key={index}
+                                    variant={alert.type}
+                                    dismissible
+                                >
+                                    {alert.message}
+                                </Alert>
+                            ))}
+                        </Col>
+                    </Row>
+                )}
 
-            </Container>
+                <Row className="mt-4">
+                    <Col sm={9}>
+                        <h2>Measurement Points</h2>
+                        {isLoading && (
+                            <Spinner animation="border" variant="primary" />
+                        )}
+                    </Col>
+                    <Col sm={3} className="d-flex justify-content-end align-items-start">
+                        <Button
+                            variant="success"
+                            onClick={() => setModalVersion('add-measurement-point')}
+                        >
+                            <i className="bi bi-plus" />
+                            <span className="ms-1">Add Measurement Point</span>
+                        </Button>
+                    </Col>
+
+                    <Col sm={12} className="d-flex flex-column gap-3">
+                        {measurementPoints.map((measurementPoint) => (
+                            <MeasurementPointCard
+                                key={measurementPoint._id}
+                                measurementPoint={measurementPoint}
+                                setModalVersion={setModalVersion}
+                                setEditedMeasurementPoint={setEditedMeasurementPoint}
+                            />
+                        ))}
+                    </Col>
+                </Row>
+
+            </Container >
         </>
     );
 }

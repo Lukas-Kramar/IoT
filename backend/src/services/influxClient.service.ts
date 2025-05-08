@@ -1,4 +1,4 @@
-import { InfluxDBClient, Point, WritableData } from '@influxdata/influxdb3-client'
+import { InfluxDBClient, Point } from '@influxdata/influxdb3-client'
 import { TemperatureData } from '../models/Data'
 
 const token = process.env.INFLUXDB_TOKEN
@@ -9,7 +9,11 @@ if (!token || !db_bucket) {
 }
 
 // Create a single instance of the InfluxDB client
-const influxClient = new InfluxDBClient({ host: 'https://eu-central-1-1.aws.cloud2.influxdata.com', token: token, database: db_bucket })
+const influxClient = new InfluxDBClient({
+    host: 'https://eu-central-1-1.aws.cloud2.influxdata.com',
+    token: token,
+    database: db_bucket,
+})
 
 const writeTemperatureData = async (
     data: TemperatureData[],
@@ -22,11 +26,12 @@ const writeTemperatureData = async (
                 .setTag('measurementPointId', measurementPointId)
                 .setTag('sensorId', sensorId)
                 .setIntegerField('temperature', entry.temperature)
-                .setIntegerField('state', entry.state.toString()) // Convert state to string if necessary
+                .setIntegerField('state', entry.state) // Convert state to string if necessary
                 .setTimestamp(new Date(entry.timeStamp * 1000)) // Convert UNIX timestamp to milliseconds
             return point
         })
 
+        console.log("writing points to influxDB: ", points);
         await influxClient.write(points)
         console.log('Data successfully written to InfluxDB.')
     } catch (error) {

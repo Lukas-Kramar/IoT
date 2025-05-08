@@ -1,53 +1,20 @@
 import apiClient from "../axiosInstance"
-import { BaseEntity, PaginatedRequest, PaginatedResponse } from "../types/basic";
+import { PaginatedRequest, PaginatedResponse } from "../types/basic";
+import { SensorConfiguration, MeasurementPoint, MeasuredQuantity, Sensor } from "./measurementPointsRequests"
 
 
-const URL_PREFIX = "/measurementPoint"
-
-export interface SensorConfiguration {
-    sendInterval: number,
-    measureInterval: number,
-    temperatureLimits: {
-        // °C
-        cooling: number, // if temperature is above this number => start cooling
-        heating: number // if temperature is below this number => start heating
-    }
-}
-export interface SenzorConfiguration extends SensorConfiguration {
-    created: number,
-}
-
-export type MeasuredQuantity = "temperature" | "acceleration";
-export interface Sensor {
-    sensorId: string,
-    name: string,
-    quantity: MeasuredQuantity,
-    config: SenzorConfiguration,
-    created: number,
-    edited?: number,
-    deleted?: number
-}
-
-export interface MeasurementPoint extends BaseEntity {
-    organisationId: string,
-    ownerId: string,
-    name: string,
-    description: string,
-    jwtToken: string,
-    sensors: Sensor[],
-}
-
-
+const URL_PREFIX = "/sensor"
 
 // Add Measurement Point
-export interface AddMeasurementPointDtoIn {
-    organisationId: string;
-    name: string;
-    description?: string;
+export interface AddSensorDtoIn {
+    measurementPointId: string,
+    name: string,
+    quantity: MeasuredQuantity,
+    config: SensorConfiguration,
 }
-const addMeasurementPoint = async (data: AddMeasurementPointDtoIn) => {
+const addSensor = async (data: AddSensorDtoIn) => {
     const response = await apiClient.post(`${URL_PREFIX}/add`, data);
-    return response.data as MeasurementPoint;
+    return response.data as Sensor[];
 };
 
 // Delete Measurement Point
@@ -104,7 +71,7 @@ const getMeasurementPointJwtToken = async (data: GetMeasurementPointJwtTokenDtoI
 
 // Export all requests
 const measurementPointsRequests = {
-    addMeasurementPoint,
+    addSensor,
     deleteMeasurementPoint,
     getMeasurementPoint,
     listMeasurementPoints,

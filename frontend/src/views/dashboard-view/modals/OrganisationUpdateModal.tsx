@@ -13,13 +13,13 @@ interface Props {
 
 
 // TODO
-const UpdateOrganisationModal = (props: Props) => {
+const OrganisationUpdateModal = (props: Props) => {
     const {
         modalVersion, setModalVersion,
         editedOrganisation
     } = props;
 
-    const { updateOrganisation, setSelectedOrganisation } = useOrganisationContext();
+    const { updateOrganisation, selectOrganisation } = useOrganisationContext();
 
     const [isLoading, setIsLoading] = useState(false);
     const [alerts, setAlerts] = useState<string[]>([]);
@@ -29,7 +29,7 @@ const UpdateOrganisationModal = (props: Props) => {
             setIsLoading(true);
             // const result = await organisationRequests.deleteOrganisation(editedOrganisation._id);
             // if (result) {
-            //     setSelectedOrganisation(null);
+            //     selectOrganisation(null);
             //     deleteOrganisation(editedOrganisation._id);
             //     setModalVersion("");
             //     return;
@@ -65,4 +65,4 @@ const UpdateOrganisationModal = (props: Props) => {
     );
 }
 
-export default UpdateOrganisationModal;
+export default OrganisationUpdateModal;
