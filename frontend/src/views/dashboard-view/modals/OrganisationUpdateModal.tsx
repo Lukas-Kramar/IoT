@@ -12,7 +12,7 @@ interface Props {
 }
 
 
-// TODO
+
 const OrganisationUpdateModal = (props: Props) => {
     const {
         modalVersion, setModalVersion,
@@ -27,13 +27,7 @@ const OrganisationUpdateModal = (props: Props) => {
     const updateOrganisationHandler = async () => {
         try {
             setIsLoading(true);
-            // const result = await organisationRequests.deleteOrganisation(editedOrganisation._id);
-            // if (result) {
-            //     selectOrganisation(null);
-            //     deleteOrganisation(editedOrganisation._id);
-            //     setModalVersion("");
-            //     return;
-            // }
+
             setAlerts(["Error updating organisation. Please try again."]);
         }
         catch (error) {
@@ -46,15 +40,29 @@ const OrganisationUpdateModal = (props: Props) => {
 
     return (
         <DefaultModal
-            title="Update Organisation"
+            title="Upravit organizaci"
             show={modalVersion === "update-organisation"}
-            submitText="Update Organisation"
+            submitText="Uložit změny"
             submitButtonColor="warning"
             onSubmit={updateOrganisationHandler}
             isLoading={isLoading}
             onHide={() => setModalVersion("")}
         >
-            <p>TODO ......... </p>
+            <p>Upravujete organizaci: <b>{editedOrganisation.name}</b></p>
+
+            <input
+                type="text"
+                className="form-control mb-2"
+                defaultValue={editedOrganisation.name}
+                onChange={(e) => setEditedOrganisation({...editedOrganisation, name: e.target.value})}
+            />
+
+            <textarea
+                className="form-control mb-2"
+                rows={3}
+                defaultValue={editedOrganisation.description}
+                onChange={(e) => setEditedOrganisation({...editedOrganisation, description: e.target.value})}
+            />
 
             {alerts.map((alert, index) => (
                 <Alert key={index} variant="danger" className="mt-2" dismissible>

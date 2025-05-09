@@ -39,21 +39,28 @@ const CreateOrganisation = (props: Props) => {
             title={"Create Organisation"}
         >
             <Form>
-                <Form.Group as={Row} >
+                <Form.Group as={Row}>
                     <Form.Label column sm={4}>
-                        XXX
+                        Název organizace
                     </Form.Label>
                     <Col sm={8}>
-                        <Form.Control type="text" placeholder="XXX" />
+                        <Form.Control
+                            type="text"
+                            placeholder="Zadejte název organizace"
+                        />
                     </Col>
                 </Form.Group>
 
                 <Form.Group as={Row} className="mt-4">
                     <Form.Label column sm={4}>
-                        XXX
+                        Popis
                     </Form.Label>
-                    <Col sm={8} className="">
-
+                    <Col sm={8}>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            placeholder="Zadejte popis organizace"
+                        />
                     </Col>
                 </Form.Group>
             </Form>
