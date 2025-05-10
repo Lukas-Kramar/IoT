@@ -1,24 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Badge, Button, Card, Col, Container, Row, Spinner, Table } from "react-bootstrap";
-import dayjs from "dayjs";
+import { Alert, Button, Col, Container, Row, Spinner } from "react-bootstrap";
+
+import { Organisation } from "../../../API/requests/organisationRequests";
 import measurementPointsRequests, { MeasurementPoint } from "../../../API/requests/measurementPointsRequests";
-import OrganisationCard from "./components/organisationCard/OrganisationCard";
 import { useOrganisationContext } from "../../customHooks/useOrganisationsContext";
+
 import OrganisationDeleteModal from "./modals/OrganisationDeleteModal";
 import OrganisationUpdateModal from "./modals/OrganisationUpdateModal";
-import { Organisation } from "../../../API/requests/organisationRequests";
-import MeasurementPointCard from "./components/measurementPointCard.tsx/MeasurementPointCard";
 import MeasurementPointAddModal from "./modals/MeasurementPointAddModal";
 import MeasurementPointDeleteModal from "./modals/MeasurementPointDeleteModal";
 import MeasurementPointUpdateModal from "./modals/MeasurementPointUpdateModal";
+
+import MeasurementPointCard from "./components/measurementPointCard.tsx/MeasurementPointCard";
 
 export type DashboardModalVersion = 'update-organisation' | 'delete-organisation' | 'add-measurement-point' | 'update-measurement-point' | 'delete-measurement-point' | '';
 
 const Dashboard = () => {
     const navigate = useNavigate();
 
-    const { selectedOrganisation } = useOrganisationContext();
+    const { selectedOrganisation, updateOrganisation, deleteOrganisation } = useOrganisationContext();
+
 
     const [isLoading, setIsLoading] = useState(false);
     const [modalVersion, setModalVersion] = useState<DashboardModalVersion>('');

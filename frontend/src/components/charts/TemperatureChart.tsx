@@ -2,7 +2,6 @@ import React from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 
 import { SensorState, TemperatureData } from "../../../API/requests/dataRequests";
-import { TooltipType } from "recharts/types/component/DefaultTooltipContent";
 
 interface Props {
     data: TemperatureData[];
@@ -54,6 +53,8 @@ const sampleData: TemperatureData[] = [
 ];
 
 const TemperatureChart: React.FC<Props> = ({ data }) => {
+
+    console.log("TemperatureChart data: ", data);
     // Map state to colors
     const stateColors: Record<SensorState, string> = {
         [SensorState.IDLE]: "#001219", // Purple

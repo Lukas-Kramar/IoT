@@ -24,7 +24,7 @@ const CreateOrganisation = (props: Props) => {
         }
 
         // TODO - write logic for creating new Organisation
-        addOrganisations([]); // TODO insert new organisation into the list
+        addOrganisations(); // TODO insert new organisation into the list
         setModalVersion("")
     }
 

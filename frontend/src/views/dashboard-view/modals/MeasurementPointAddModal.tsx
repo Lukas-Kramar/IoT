@@ -14,8 +14,6 @@ interface Props {
     selectedOrganisationId: string,
 }
 
-
-// TODO
 const MeasurementPointAddModal = (props: Props) => {
     const {
         modalVersion, setModalVersion,
@@ -26,7 +24,7 @@ const MeasurementPointAddModal = (props: Props) => {
     const [isLoading, setIsLoading] = useState(false);
     const [alerts, setAlerts] = useState<string[]>([]);
 
-    const [validated, setValidated] = useState(false);
+    // const [validated, setValidated] = useState(false);
     const [newMeasurementPoint, setNewMeasurementPoint] = useState<AddMeasurementPointDtoIn>({
         organisationId: selectedOrganisationId,
         name: "",

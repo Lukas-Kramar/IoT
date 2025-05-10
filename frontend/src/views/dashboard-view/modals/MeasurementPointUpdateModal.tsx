@@ -1,10 +1,9 @@
 import { useState } from "react";
-import organisationRequests, { Organisation } from "../../../../API/requests/organisationRequests";
-import DefaultModal from "../../../components/modals/DefaultModal";
-import { useOrganisationContext } from "../../../customHooks/useOrganisationsContext";
 import { Alert, Form } from "react-bootstrap";
-import { DashboardModalVersion } from "../Dashboard";
+
 import measurementPointsRequests, { MeasurementPoint, UpdateMeasurementPointDtoIn } from "../../../../API/requests/measurementPointsRequests";
+import DefaultModal from "../../../components/modals/DefaultModal";
+import { DashboardModalVersion } from "../Dashboard";
 
 interface Props {
     modalVersion: 'update-measurement-point',
@@ -13,8 +12,6 @@ interface Props {
     acknowladgeUpdatedMeasurementPoint: (mp: MeasurementPoint) => void,
 }
 
-
-// TODO
 const MeasurementPointUpdateModal = (props: Props) => {
     const {
         modalVersion, setModalVersion,
@@ -54,13 +51,14 @@ const MeasurementPointUpdateModal = (props: Props) => {
         <DefaultModal
             title="Update Measurement Point"
             show={modalVersion === "update-measurement-point"}
+            size="lg"
             submitText="Update"
             submitButtonColor="warning"
             onSubmit={updateMeasurementPointHandler}
             isLoading={isLoading}
             onHide={() => setModalVersion("")}
         >
-            <Form>
+            <Form id="measurement-point-form">
                 <Form.Group className="mb-3" controlId="name">
                     <Form.Label>Name</Form.Label>
                     <Form.Control

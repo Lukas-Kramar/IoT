@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 
 import { useLoggedUserContext } from "../src/customHooks/useLoggedUserContext";
-import userRequests, { RegisterUser } from "../API/requests/userRequests";
+import userRequests from "../API/requests/userRequests";
 import { emailRegex } from "../src/helpers"
 
 
@@ -41,16 +41,16 @@ const Login = () => {
         }
         try {
             setIsLoading(true);
-            const addUserBody: RegisterUser = {
-                firstName,
-                lastName,
-                email,
-                password,
-                role: 1
-            }
+            // const addUserBody: RegisterUser = {
+            //     firstName,
+            //     lastName,
+            //     email,
+            //     password,
+            //     role: 1
+            // }
 
-            const result = await userRequests.registerUser(addUserBody);
-            if (!result._id) { throw new Error("Failed to register user"); }
+            // const result = await userRequests.registerUser(addUserBody);
+            // if (!result._id) { throw new Error("Failed to register user"); }
             navigate("/login?registered=true")
         } catch (err) {
             console.error("handleSubmit - error: ", err);
@@ -122,36 +122,36 @@ const Login = () => {
                                     and at least one special character.
                                 </Form.Text>
                             </Col>
-                            <Col></Col>
                         </Row>
 
-                        <Button disabled={isLoading} variant="primary" type="submit">
-                            {isLoading ? "Registering User..." : "Register"}
-                        </Button>
+                        <Row className="mt-3">
+                            <Col className="d-flex flex-row justify-content-between">
+                                <Button
+                                    variant="info"
+                                    type="submit"
+                                    onClick={() => { navigate(userData ? "/login" : "/") }}
+                                >
+                                    Switch to Login
+                                </Button>
+
+                                <Button
+                                    disabled={isLoading}
+                                    variant="primary"
+                                    type="submit"
+                                >
+                                    {isLoading ? "Registering User..." : "Register"}
+                                </Button>
+                            </Col>
+                        </Row>
                     </Form>
 
                     {alerts.map((alert, i) => (
                         <Alert key={`Register-error-alert-${i}`} variant="danger" dismissible className="mb-2">{alert}</Alert>
                     ))}
 
-                    <Button
-                        variant="info"
-                        type="submit"
-                        onClick={() => { navigate(userData ? "/login" : "/") }}
-                    >
-                        Switch to Login
-                    </Button>
+
                 </Card.Body>
             </Card>
-
-            {/* <div className="card shadow-lg" style={{ width: "400px" }}>
-                <div className="card-body">
-                    <h2 className="card-title text-center mb-4"></h2>
-
-
-                </div>
-            </div> */}
-
         </div>
     );
 };
