@@ -1,9 +1,13 @@
-import { Button, Col, Row } from "react-bootstrap";
-import { MeasurementPoint, Sensor } from "../../../../../API/requests/measurementPointsRequests";
 import { memo, useCallback, useState } from "react";
+import { Button, Col, Row } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+
+import { MeasurementPoint, Sensor } from "../../../../../API/requests/measurementPointsRequests";
+
 import { DashboardModalVersion } from "../../Dashboard";
 import SensorItem from "./SensorItem";
 import TemperatureChart from "../../../../components/charts/TemperatureChart";
+
 import SensorAddModal from "./modals/SensorAddModal";
 import SensorUpdateModal from "./modals/SensorUpdateModal";
 import SensorDeleteModal from "./modals/SensorDeleteModal";
@@ -21,6 +25,8 @@ const MeasurementPointCard = (props: Props) => {
         setModalVersion,
         setEditedMeasurementPoint
     } = props;
+
+    const navigate = useNavigate();
 
     // const [isLoading, setIsLoading] = useState(false);[]
     // const [alerts, setAlerts] = useState<string[]>([]);
@@ -102,9 +108,20 @@ const MeasurementPointCard = (props: Props) => {
                 <Col sm={12} className="d-flex flex-column gap-4">
                     <hr className="mb-0" />
                     <div>
-                        <p>
-                            <strong>Temperature data recorded in last 24h:</strong>
-                        </p>
+                        <div className="d-flex justify-content-between">
+                            <p>
+                                <strong>Temperature data recorded in last 24h:</strong>
+                            </p>
+                            <Button
+                                variant="primary"
+                                onClick={() => navigate(`/data?mpId=${measurementPoint._id}`)}
+
+                            >
+                                <i className="bi bi-graph-up-arrow me-2" />
+                                View Data
+                            </Button>
+                        </div>
+
                         <TemperatureChart data={[]} />
                     </div>
                     <div>
@@ -119,13 +136,15 @@ const MeasurementPointCard = (props: Props) => {
                             </Button>
                         </div>
 
-                        {sensors.map((sensor) => (
-                            <SensorItem
-                                sensor={sensor}
-                                setModalVersion={setLocalModalVersion}
-                                setEditedSensor={setSelectedSensor}
-                            />
-                        ))}
+                        <div className="d-flex flex-column gap-2">
+                            {sensors.map((sensor) => (
+                                <SensorItem
+                                    sensor={sensor}
+                                    setModalVersion={setLocalModalVersion}
+                                    setEditedSensor={setSelectedSensor}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </Col>
             </Row>

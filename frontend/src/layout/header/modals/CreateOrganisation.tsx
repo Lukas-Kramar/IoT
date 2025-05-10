@@ -1,10 +1,10 @@
-import { Dispatch } from "react";
-import { Col, Form, Row } from "react-bootstrap";
+import { Dispatch, useState } from "react";
+import { Alert, Col, Form, Row } from "react-bootstrap";
 
 import DefaultModal from "../../../components/modals/DefaultModal";
 
-import { useLoggedUserContext } from '../../../customHooks/useLoggedUserContext';
 import { useOrganisationContext } from "../../../customHooks/useOrganisationsContext";
+import organisationRequests, { AddOrganisationDtoIn } from "../../../../API/requests/organisationRequests";
 
 interface Props {
     modalVersion: 'create-organisation',
@@ -14,18 +14,34 @@ interface Props {
 const CreateOrganisation = (props: Props) => {
     const { modalVersion, setModalVersion } = props;
 
-    const { userData } = useLoggedUserContext();
     const { addOrganisations } = useOrganisationContext();
 
-    const handleSubmitNewProject = async () => {
-        if (!userData) {
-            console.error("handleSubmitNewProject - userData is null: ", userData);
+    const [isLoading, setIsLoading] = useState(false);
+    const [alerts, setAlerts] = useState<string[]>([]);
+    const [newOrganisation, setNewOrganisation] = useState<AddOrganisationDtoIn>({
+        name: "",
+        description: "",
+    });
+
+    const handleSubmitNewOrganisation = async () => {
+        if (!newOrganisation.name || newOrganisation.name.length < 3) {
+            console.error("handleSubmitNewProject - newOrganisation is null: ", newOrganisation);
+            setAlerts([...alerts, "Organisation name must be longer than 3 characters"]);
             return;
         }
-
-        // TODO - write logic for creating new Organisation
-        addOrganisations(); // TODO insert new organisation into the list
-        setModalVersion("")
+        try {
+            setIsLoading(true);
+            const result = await organisationRequests.addOrganisation(newOrganisation);
+            if (!result || !result._id) {
+                throw new Error("createOrganisation - addOrganisations - failed");
+            }
+            addOrganisations([result]); // TODO insert new organisation into the list
+            setModalVersion("");
+        } catch (err) {
+            console.error("handleSubmitNewProject - error: ", err);
+            setAlerts([...alerts, "Failed to create new Organisation"]);
+        }
+        finally { setIsLoading(false); }
     }
 
 
@@ -34,36 +50,53 @@ const CreateOrganisation = (props: Props) => {
         <DefaultModal
             show={modalVersion === "create-organisation"}
             onHide={() => setModalVersion('')}
-            onSubmit={() => { }}
+            onSubmit={handleSubmitNewOrganisation}
             submitText="Create Organisation"
             title={"Create Organisation"}
+            isLoading={isLoading}
         >
             <Form>
                 <Form.Group as={Row}>
                     <Form.Label column sm={4}>
-                        Název organizace
+                        Name
                     </Form.Label>
                     <Col sm={8}>
                         <Form.Control
                             type="text"
-                            placeholder="Zadejte název organizace"
+                            placeholder="Name..."
+                            minLength={3}
+                            maxLength={60}
+                            value={newOrganisation.name}
+                            onChange={(e) => setNewOrganisation({ ...newOrganisation, name: e.target.value })}
                         />
                     </Col>
                 </Form.Group>
 
                 <Form.Group as={Row} className="mt-4">
                     <Form.Label column sm={4}>
-                        Popis
+                        Description
                     </Form.Label>
                     <Col sm={8}>
                         <Form.Control
                             as="textarea"
                             rows={3}
-                            placeholder="Zadejte popis organizace"
+                            placeholder="Description (optional)..."
+                            value={newOrganisation.description}
+                            onChange={(e) => setNewOrganisation({ ...newOrganisation, description: e.target.value })}
                         />
                     </Col>
                 </Form.Group>
             </Form>
+
+            {alerts.length > 0 && (
+                <div className="mt-3">
+                    {alerts.map((alert, index) => (
+                        <Alert key={index} variant="danger" dismissible>
+                            {alert}
+                        </Alert>
+                    ))}
+                </div>
+            )}
 
         </DefaultModal>
     );

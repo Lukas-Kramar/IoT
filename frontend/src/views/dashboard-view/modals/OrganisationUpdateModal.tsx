@@ -2,7 +2,7 @@ import { useState } from "react";
 import organisationRequests, { Organisation } from "../../../../API/requests/organisationRequests";
 import DefaultModal from "../../../components/modals/DefaultModal";
 import { useOrganisationContext } from "../../../customHooks/useOrganisationsContext";
-import { Alert } from "react-bootstrap";
+import { Alert, Col, Form, Row } from "react-bootstrap";
 import { DashboardModalVersion } from "../Dashboard";
 
 interface Props {
@@ -10,8 +10,6 @@ interface Props {
     setModalVersion: React.Dispatch<React.SetStateAction<DashboardModalVersion>>,
     editedOrganisation: Organisation,
 }
-
-
 
 const OrganisationUpdateModal = (props: Props) => {
     const {
@@ -24,19 +22,33 @@ const OrganisationUpdateModal = (props: Props) => {
     const [isLoading, setIsLoading] = useState(false);
     const [alerts, setAlerts] = useState<string[]>([]);
 
+    const [edittingOrganisation, setNewOrganisation] = useState(editedOrganisation);
+
     const updateOrganisationHandler = async () => {
+        if (!edittingOrganisation.name || edittingOrganisation.name.length < 3) {
+            console.error("handleSubmitNewProject - edittingOrganisation is null: ", edittingOrganisation);
+            setAlerts([...alerts, "Organisation name must be longer than 3 characters"]);
+            return;
+        }
         try {
             setIsLoading(true);
-
-            setAlerts(["Error updating organisation. Please try again."]);
-        }
-        catch (error) {
-            console.error("Error updating organisation: ", error);
-            setAlerts(["Error updating organisation. Please try again."]);
+            const result = await organisationRequests.updateOrganisation({
+                id: edittingOrganisation._id,
+                name: edittingOrganisation.name,
+                description: edittingOrganisation.description,
+            });
+            if (!result || !result._id) {
+                throw new Error("createOrganisation - addOrganisations - failed");
+            }
+            updateOrganisation(result);
+            selectOrganisation(result);
+            setModalVersion("");
+        } catch (err) {
+            console.error("Error updating organisation: ", err);
+            setAlerts(["Error updating organisation. Please try again."])
         }
         finally { setIsLoading(false); }
     }
-
 
     return (
         <DefaultModal
@@ -48,27 +60,48 @@ const OrganisationUpdateModal = (props: Props) => {
             isLoading={isLoading}
             onHide={() => setModalVersion("")}
         >
-            <p>Upravujete organizaci: <b>{editedOrganisation.name}</b></p>
+            <Form>
+                <Form.Group as={Row}>
+                    <Form.Label column sm={4}>
+                        Name
+                    </Form.Label>
+                    <Col sm={8}>
+                        <Form.Control
+                            type="text"
+                            placeholder="Name..."
+                            minLength={3}
+                            maxLength={60}
+                            value={edittingOrganisation.name}
+                            onChange={(e) => setNewOrganisation({ ...edittingOrganisation, name: e.target.value })}
+                        />
+                    </Col>
+                </Form.Group>
 
-            <input
-                type="text"
-                className="form-control mb-2"
-                defaultValue={editedOrganisation.name}
-                onChange={(e) => setEditedOrganisation({...editedOrganisation, name: e.target.value})}
-            />
+                <Form.Group as={Row} className="mt-4">
+                    <Form.Label column sm={4}>
+                        Description
+                    </Form.Label>
+                    <Col sm={8}>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            placeholder="Description (optional)..."
+                            value={edittingOrganisation.description}
+                            onChange={(e) => setNewOrganisation({ ...edittingOrganisation, description: e.target.value })}
+                        />
+                    </Col>
+                </Form.Group>
+            </Form>
 
-            <textarea
-                className="form-control mb-2"
-                rows={3}
-                defaultValue={editedOrganisation.description}
-                onChange={(e) => setEditedOrganisation({...editedOrganisation, description: e.target.value})}
-            />
-
-            {alerts.map((alert, index) => (
-                <Alert key={index} variant="danger" className="mt-2" dismissible>
-                    {alert}
-                </Alert>
-            ))}
+            {alerts.length > 0 && (
+                <div className="mt-3">
+                    {alerts.map((alert, index) => (
+                        <Alert key={index} variant="danger" dismissible>
+                            {alert}
+                        </Alert>
+                    ))}
+                </div>
+            )}
         </DefaultModal>
     );
 }

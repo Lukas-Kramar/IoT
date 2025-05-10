@@ -1,22 +1,90 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Button, Row, Col, Container, Alert } from 'react-bootstrap';
+import { Form, Button, Row, Col, Container, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { useLoggedUserContext } from '../../customHooks/useLoggedUserContext';
-import { Policy, User } from '../../../API/requests/userRequests';
+import userRequests, { Policy, User } from '../../../API/requests/userRequests';
+
+import { emailRegex } from '../../helpers';
 
 const UserProfile = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
 
-    const { userData } = useLoggedUserContext();
+    const { userData, setUserData } = useLoggedUserContext();
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [alerts, setAlerts] = useState<{ variant: string, message: string }[]>([]);
+
     const [editedUser, setEditedUser] = useState<User | null>(userData);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const formValid = {
+        firstName: editedUser && editedUser.firstName.length > 3,
+        lastName: editedUser && editedUser.lastName.length > 3,
+        email: editedUser && emailRegex.test(editedUser.email ?? ""),
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO - handle form submission logic
-        // Implement the save logic here, e.g., sending the updated user data to the server
-        console.log('User data saved:', editedUser);
+        e.stopPropagation()
+
+        if (!editedUser) { return; }
+        if (!formValid.firstName) {
+            setAlerts([
+                ...alerts, {
+                    variant: "warning",
+                    message: "User First Name must be longer than 3 characters."
+                }
+            ]);
+            return;
+        }
+        if (!formValid.lastName) {
+            setAlerts([
+                ...alerts, {
+                    variant: "warning",
+                    message: "User Last Name must be longer than 3 characters."
+                }
+            ]);
+            return;
+        }
+        if (!formValid.email) {
+            setAlerts([
+                ...alerts, {
+                    variant: "warning",
+                    message: "Email must be in a valid format."
+                }
+            ]);
+            return;
+        }
+        try {
+            setIsLoading(true);
+            const result = await userRequests.updateUser({
+                _id: editedUser._id,
+                firstName: editedUser.firstName,
+                lastName: editedUser.lastName,
+                email: editedUser.email,
+            });
+            if (!result || !result._id) {
+                throw new Error("createOrganisation - addOrganisations - failed");
+            }
+
+            setAlerts([
+                ...alerts, {
+                    variant: "success",
+                    message: "User updated successfully."
+                }
+            ]);
+            setUserData(result);
+        } catch (err) {
+            console.error("Error updating organisation: ", err);
+            setAlerts([
+                ...alerts, {
+                    variant: "danger",
+                    message: "User update failed, try it again please."
+                }
+            ]);
+        }
+        finally { setIsLoading(false); }
     };
 
     useEffect(() => {
@@ -37,26 +105,50 @@ const UserProfile = () => {
                 : (
                     <Form onSubmit={handleSubmit}>
                         <Row className="mb-3">
-                            <Form.Group as={Col} controlId="formName">
-                                <Form.Label>First Name</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    name="name"
-                                    value={editedUser.firstName}
-                                    onChange={(e) => setEditedUser({ ...editedUser, firstName: e.target.value })}
-                                />
-                            </Form.Group>
+                            <Col>
+                                <Form.Group as={Col} controlId="firstName">
+                                    <Form.Label>First Name</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="name"
+                                        value={editedUser.firstName}
+                                        minLength={3}
+                                        maxLength={60}
+                                        onChange={(e) => setEditedUser({ ...editedUser, firstName: e.target.value })}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col>
+                                <Form.Group as={Col} controlId="lastName">
+                                    <Form.Label>Last Name</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="name"
+                                        value={editedUser.lastName}
+                                        minLength={3}
+                                        maxLength={60}
+                                        onChange={(e) => setEditedUser({ ...editedUser, lastName: e.target.value })}
+                                    />
+                                </Form.Group>
+                            </Col>
                         </Row>
-                        {/* <Form.Group controlId="formPassword" className="mb-3">
-                            <Form.Label>Password</Form.Label>
-                            <Form.Control
-                                type="password"
-                                name="password"
-                                value={editedUser.password}
-                                onChange={handleChange}
-                            />
-                        </Form.Group> */}
-                        {/* TODO - if currentLogedUser role === "ADMIN" */}
+
+                        <Row className="mb-3">
+                            <Col>
+                                <Form.Group as={Col} controlId="email">
+                                    <Form.Label>Email</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="name"
+                                        value={editedUser.email}
+                                        minLength={3}
+                                        maxLength={60}
+                                        onChange={(e) => setEditedUser({ ...editedUser, firstName: e.target.value })}
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
                         <Row>
                             <Col sm={4}>
                                 {(
@@ -81,6 +173,16 @@ const UserProfile = () => {
                             </Col>
                             <Col sm={4} className='d-flex align-items-end justify-content-end'>
                                 <Button variant="primary" type="submit">
+                                    {isLoading && (
+                                        <Spinner
+                                            as="span"
+                                            className='me-2'
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                        />
+                                    )}
                                     Save
                                 </Button>
                             </Col>
@@ -90,6 +192,15 @@ const UserProfile = () => {
                     </Form>
                 )
             }
+            {alerts.length > 0 && (
+                <div className="mt-3">
+                    {alerts.map((alert, index) => (
+                        <Alert key={index} variant={alert.variant} dismissible>
+                            {alert.message}
+                        </Alert>
+                    ))}
+                </div>
+            )}
         </Container>
     );
 };

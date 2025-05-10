@@ -7,7 +7,7 @@ interface Props {
     onSubmit: () => void | Promise<void>,
     title?: string,
     submitText?: string,
-    submitButtonColor?: "primary" | "secondary" | "info" | "warning" | "danger",
+    submitButtonColor?: "primary" | "secondary" | "info" | "warning" | "danger" | "success",
     children?: ReactNode[] | ReactNode,
     submitFormId?: string,
     isLoading?: boolean,

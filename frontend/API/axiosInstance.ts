@@ -2,7 +2,7 @@ import axios from "axios";
 
 const apiClient = axios.create({
     baseURL: 'https://iot-team07-api-summer-2025.azurewebsites.net', // Replace with your base URL
-    timeout: 1000, // Optional: specify a timeout in milliseconds
+    timeout: 3000, // Optional: specify a timeout in milliseconds
     headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': 'https://iot-team07-api-summer-2025.azurewebsites.net',

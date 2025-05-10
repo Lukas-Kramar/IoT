@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 
 import { useLoggedUserContext } from "../src/customHooks/useLoggedUserContext";
-import userRequests from "../API/requests/userRequests";
+import userRequests, { RegisterUserDtoIn } from "../API/requests/userRequests";
 import { emailRegex } from "../src/helpers"
 
 
-const Login = () => {
+const Register = () => {
     const navigate = useNavigate();
     const { userData } = useLoggedUserContext();
 
@@ -32,26 +32,29 @@ const Login = () => {
     }
 
 
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        e.stopPropagation()
         setValidated(true);
 
         if (!Object.values(formValid).every((valid) => !!valid)) {
+            console.log("formValid: ", formValid);
             return; // invalid form
         }
         try {
             setIsLoading(true);
-            // const addUserBody: RegisterUser = {
-            //     firstName,
-            //     lastName,
-            //     email,
-            //     password,
-            //     role: 1
-            // }
+            const addUserBody: RegisterUserDtoIn = {
+                firstName,
+                lastName,
+                email,
+                password,
+                role: 1
+            }
 
-            // const result = await userRequests.registerUser(addUserBody);
-            // if (!result._id) { throw new Error("Failed to register user"); }
-            navigate("/login?registered=true")
+            const result = await userRequests.registerUser(addUserBody);
+            if (!result._id) { throw new Error("Failed to register user"); }
+            navigate("/")
         } catch (err) {
             console.error("handleSubmit - error: ", err);
             setAlerts([...alerts, "Failed to Register new User"]);
@@ -63,12 +66,22 @@ const Login = () => {
     return (
         <div className="d-flex justify-content-center align-items-center vh-100 bg-light flex-column">
             <Card style={{ width: "500px" }}>
-                <Card.Header className="text-center mb-4">
-                    <h2>Register new Account</h2>
+                <Card.Header className="d-flex flex-row justify-content-between align-items-center mb-4 p-4">
+                    <h2>Register Account</h2>
+                    {/* Company Logo at the top */}
+                    <img
+                        src="./smart-terrarium-logo.png" // Place your logo file in 'public/logo.png' or update the path as needed
+                        alt="Company Logo"
+                        style={{
+                            width: "120px",
+                            borderRadius: "12px",
+                            boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+                        }}
+                    />
                 </Card.Header>
                 <Card.Body>
                     <Form onSubmit={handleSubmit}>
-                        <Row>
+                        <Row className="mb-2">
                             <Col>
                                 <Form.Label htmlFor="inputFirstName">First Name</Form.Label>
                                 <Form.Control
@@ -77,7 +90,7 @@ const Login = () => {
                                     value={firstName}
                                     onChange={(e) => setFirstName(e.target.value)}
                                     minLength={3}
-                                    isInvalid={validated && formValid.firstName}
+                                    isInvalid={validated && !formValid.firstName}
                                 />
                             </Col>
                             <Col>
@@ -88,12 +101,12 @@ const Login = () => {
                                     value={lastName}
                                     onChange={(e) => setLastName(e.target.value)}
                                     minLength={3}
-                                    isInvalid={validated && formValid.lastName}
+                                    isInvalid={validated && !formValid.lastName}
                                 />
                             </Col>
                         </Row>
 
-                        <Row>
+                        <Row className="mb-2">
                             <Col>
                                 <Form.Label htmlFor="inputEmail">Email</Form.Label>
                                 <Form.Control
@@ -101,13 +114,13 @@ const Login = () => {
                                     id="inputEmail"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    isInvalid={validated && formValid.email}
+                                    isInvalid={validated && !formValid.email}
                                 />
                             </Col>
                             <Col></Col>
                         </Row>
 
-                        <Row>
+                        <Row className="mb-2">
                             <Col>
                                 <Form.Label htmlFor="inputPassword">Password</Form.Label>
                                 <Form.Control
@@ -116,6 +129,7 @@ const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     aria-describedby="passwordHelpBlock"
+                                    isInvalid={validated && !formValid.password}
                                 />
                                 <Form.Text id="passwordHelpBlock" muted>
                                     Your password must be 8-20 characters long, contain letters (at least one uppper and one lower), numbers,
@@ -156,4 +170,4 @@ const Login = () => {
     );
 };
 
-export default Login;
+export default Register;

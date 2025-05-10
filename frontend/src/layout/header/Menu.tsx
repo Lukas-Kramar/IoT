@@ -10,18 +10,13 @@ import { useLoggedUserContext } from '../../customHooks/useLoggedUserContext';
 const Menu = () => {
 
     const navigate = useNavigate();
-    const { userData } = useLoggedUserContext();
+    const { userData, logoutUser } = useLoggedUserContext();
     const {
-        isLoading,
         organisations,
         selectedOrganisation, selectOrganisation,
     } = useOrganisationContext();
 
     const [modalVersion, setModalVersion] = useState<'create-organisation' | string>('');
-
-    console.log("Menu - re-rednering: ", selectedOrganisation);
-
-
 
     return (
         <>
@@ -30,6 +25,17 @@ const Menu = () => {
             )}
 
             <Navbar bg="dark" variant="dark" expand="lg" fixed="top" className='px-5'>
+                <Navbar.Brand href="#" className='d-flex flex-row align-items-center'>
+                    <img
+                        src="./smart-terrarium-logo.png"
+                        width={50}
+                        height={50}
+                        className="d-inline-block align-top me-2"
+                        alt="Smart Terrarium logo"
+                    />
+
+                    Smart Terrarium
+                </Navbar.Brand>
                 <DropdownButton
                     as={ButtonGroup}
                     variant={'primary'}
@@ -70,7 +76,11 @@ const Menu = () => {
                         </span>
                     </Button>
                     <div className='ms-4'>
-                        <Button variant="danger" className="text-light" onClick={() => alert("LOGGIN OUT")}>
+                        <Button
+                            variant="danger"
+                            className="text-light"
+                            onClick={logoutUser}
+                        >
                             <i className="bi bi-box-arrow-right fs-4"></i>
                         </Button>
                     </div>

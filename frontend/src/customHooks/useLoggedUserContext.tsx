@@ -47,8 +47,7 @@ export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
     }
 
-    const logoutUser = () => {
-        console.log("logoutUser");
+    const logoutUser = () => {      
         setUserData(null);
         localStorage.removeItem(JWT_TOKEN_STORAGE_KEY);
         localStorage.removeItem(USER_ID_STORAGE_KEY);

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Alert, Button, Col, Container, Row, Spinner } from "react-bootstrap";
 
 import { Organisation } from "../../../API/requests/organisationRequests";
@@ -17,10 +16,7 @@ import MeasurementPointCard from "./components/measurementPointCard.tsx/Measurem
 export type DashboardModalVersion = 'update-organisation' | 'delete-organisation' | 'add-measurement-point' | 'update-measurement-point' | 'delete-measurement-point' | '';
 
 const Dashboard = () => {
-    const navigate = useNavigate();
-
-    const { selectedOrganisation, updateOrganisation, deleteOrganisation } = useOrganisationContext();
-
+    const { selectedOrganisation } = useOrganisationContext();
 
     const [isLoading, setIsLoading] = useState(false);
     const [modalVersion, setModalVersion] = useState<DashboardModalVersion>('');
@@ -28,8 +24,6 @@ const Dashboard = () => {
 
     const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([]);
     const [editedMeasurementPoint, setEditedMeasurementPoint] = useState<MeasurementPoint | null>(null);
-
-
 
     const acknowladgeAddedMeasurementPoint = (measurementPoint: MeasurementPoint) => {
         setMeasurementPoints([...measurementPoints, measurementPoint]);
