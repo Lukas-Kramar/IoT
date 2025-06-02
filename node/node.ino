@@ -13,16 +13,26 @@
 #define tempPerVolt 100
 #define maxTemp minTemp + 5 * tempPerVolt
 
-#define SchedulerScreenShutoffEventId 1
-#define SchedulerMeasurmentEventId 2
-#define SchedulerSendMeasurmentEventId 3
+#define SchedulerScreenShutoffEventId 0
+#define SchedulerMeasurmentEventId 1
+#define SchedulerSendMeasurmentEventId 2
 #define SchdulerMaxSeconds UINT64_MAX/1000
 
 #define TempStateNoAction 0
 #define TempStateHeater 1
 #define TempStateCooler 2
 
+#define IsDebugActive 1
+#ifdef IsDebugActive
+#define DebugTempCoolerStart 70
+#define DebugTempHeaterStart 50
+#define DebugMeasurementDelay 1
+#define DebugSendMeasurementDelay 4
+#endif
+
 #ifndef Scheduler
+  #define schedulerSensitivity 1000
+
   class SchedulerEvent {
     private:
       bool isActive = false;
@@ -77,9 +87,8 @@
   class Scheduler {
     private:
       SchedulerEvent schedulerEvents[3];
-      static const int schedulerSensitivity = 1000; 
-      unsigned long lastSchedulerTimestamp = 0;
-      unsigned long curentSchedulerTimestamp = 0;   
+      unsigned long lastSchedulerTimestamp = 0LU;
+      unsigned long curentSchedulerTimestamp = 0LU;   
     public:
       Scheduler()
       {
@@ -106,48 +115,47 @@
         //jedna iterace loop je +- 1000ms
         //z tohoto duvodu nepotřebujem tak moc přesnou konverzi z ms od startu do schuler timestampu
         //nechceme 1:1 vztah mezi millis a timestampem protože milis overflowne jednou za ~51 dni, což by mohlo způsobit selhani scheduleru;
-        curentSchedulerTimestamp = millis() / schedulerSensitivity;
-
+        
+        curentSchedulerTimestamp =  millis() / schedulerSensitivity;
         if(lastSchedulerTimestamp > curentSchedulerTimestamp)
         {
           //došlo k overflow millis()
-          int itemCount =sizeof schedulerEvents/sizeof schedulerEvents[0];
-          for (int i=0; i<itemCount; i++) {
+          byte itemCount =sizeof schedulerEvents/sizeof schedulerEvents[0];
+          for (byte i=0; i<itemCount; i++) {
               schedulerEvents[i].CorrectSchedulerOverflow();
           }
         }
-
         lastSchedulerTimestamp = curentSchedulerTimestamp;
       }
-      bool IsScheduleElapsed(int index)
+      bool IsScheduleElapsed(byte index)
       {
         if(schedulerEvents < 0 || schedulerEvents >= 3)
         {
-          schedulerEvents[index].IsScheduleElapsed(curentSchedulerTimestamp);
+          return schedulerEvents[index].IsScheduleElapsed(curentSchedulerTimestamp);
         }
       }
-      void SetNextRun(int index, unsigned long nextRun)
+      void SetNextRun(byte index, unsigned long nextRun)
       {
         if(schedulerEvents < 0 || schedulerEvents >= 3)
         {
           schedulerEvents[index].SetNextRun(nextRun);
         }
       }
-      void SetNextRunOffsetFromTime(int index, unsigned long nextRun, unsigned long offsetFrom)
+      void SetNextRunOffsetFromTime(byte index, unsigned long nextRun, unsigned long offsetFrom)
       {
         if(schedulerEvents < 0 || schedulerEvents >= 3)
         {
           schedulerEvents[index].SetNextRunOffsetFromTime(nextRun, offsetFrom);
         }
       }
-      void SetNextRunOffsetFromCurrentTime(int index, unsigned long nextRun)
+      void SetNextRunOffsetFromCurrentTime(byte index, unsigned long nextRun)
       {
         if(schedulerEvents < 0 || schedulerEvents >= 3)
         {
           schedulerEvents[index].SetNextRunOffsetFromTime(nextRun, curentSchedulerTimestamp);
         }
       }
-      bool SetNextRunOffsetFromSheduledTime(int index, unsigned long nextRun)
+      bool SetNextRunOffsetFromSheduledTime(byte index, unsigned long nextRun)
       {
         if(schedulerEvents < 0 || schedulerEvents >= 3)
         {
@@ -158,13 +166,13 @@
 #endif
 
 #ifndef EepromController
+  #define adressTempCoolerStart 0
+  #define adressTempHeaterStart 4
+  #define adressMeasurementDelay 8
+  #define adressSendMeasurementDelay 12
   class EepromController
   {
     private:
-      static const int adressTempCoolerStart = 0;
-      static const int adressTempHeaterStart = 4;
-      static const int adressMeasurementDelay = 8;
-      static const int adressSendMeasurementDelay = 12;
       
       typedef union
       {
@@ -173,17 +181,16 @@
       } EEPROM_FLOAT;
       typedef union
       {
-        int number;
+        unsigned int number;
         uint8_t bytes[4];
-      } EEPROM_INT;
+      } EEPROM_UINT;
 
-      bool readFloatFromEEPROM(int adress, float* outputValue)
+      bool readFloatFromEEPROM(byte adress, float* outputValue)
       {
-
         bool allNoValue = true;
         
         EEPROM_FLOAT eepromValue;
-        for(int offset = 0;offset < 4; offset++)
+        for(byte offset = 0;offset < 4; offset++)
         {
           uint8_t byteValue = EEPROM.read(adress + offset);
           if(byteValue != 255)
@@ -202,7 +209,7 @@
           return true;
         }
       }
-      void writeFloatToEEPROM(int adress, float value)
+      void writeFloatToEEPROM(byte adress, float value)
       {
         float currentValue;
         if(readFloatFromEEPROM(adress, &currentValue) && currentValue == value)
@@ -211,18 +218,18 @@
         }
         EEPROM_FLOAT eepromValue;
         eepromValue.number = value;
-        for(int offset = 0;offset < 4; offset++)
+        for(byte offset = 0;offset < 4; offset++)
         {
           EEPROM.write(adress + offset, eepromValue.bytes[offset]);
         }
       }
 
-      bool readIntFromEEPROM(int adress, int* outputValue)
+      bool readUnsignedIntFromEEPROM(byte adress, unsigned int* outputValue)
       {
         bool allNoValue = true;
         
-        EEPROM_INT eepromValue;
-        for(int offset = 0;offset < 2; offset++)
+        EEPROM_UINT eepromValue;
+        for(byte offset = 0;offset < 2; offset++)
         {
           uint8_t byteValue = EEPROM.read(adress + offset);
           if(byteValue != 255)
@@ -242,16 +249,16 @@
         }
       }
 
-      void writeIntToEEPROM(int adress, int value)
+      void writeUnsignedIntToEEPROM(byte adress, unsigned int value)
       {
         int currentValue;
-        if(readIntFromEEPROM(adress, &currentValue) && currentValue == value)
+        if(readUnsignedIntFromEEPROM(adress, &currentValue) && currentValue == value)
         {
           return;
         }
-        EEPROM_INT eepromValue;
+        EEPROM_UINT eepromValue;
         eepromValue.number = value;
-        for(int offset = 0;offset < 2; offset++)
+        for(byte offset = 0;offset < 2; offset++)
         {
           EEPROM.write(adress + offset, eepromValue.bytes[offset]);
         }
@@ -261,6 +268,9 @@
       EepromController(){}
       float ReadTempCoolerStart()
       {
+        #ifdef IsDebugActive
+        return DebugTempCoolerStart;
+        #endif
         float tempCoolerStart;
         if(!readFloatFromEEPROM(adressTempCoolerStart, &tempCoolerStart))
         {
@@ -271,6 +281,9 @@
 
       float ReadTempHeaterStart()
       {
+        #ifdef IsDebugActive
+        return DebugTempHeaterStart;
+        #endif
         float tempHeaterStart;
         if(!readFloatFromEEPROM(adressTempHeaterStart, &tempHeaterStart))
         {
@@ -279,20 +292,26 @@
         return tempHeaterStart;
       }
 
-      int ReadMeasurementDelay()
+      unsigned int ReadMeasurementDelay()
       {
-        int measurementDelay;
-        if(!readIntFromEEPROM(adressMeasurementDelay, &measurementDelay))
+        #ifdef IsDebugActive
+        return DebugMeasurementDelay;
+        #endif
+        unsigned int measurementDelay;
+        if(!readUnsignedIntFromEEPROM(adressMeasurementDelay, &measurementDelay))
         {
           measurementDelay = 120; //2 min
         }
         return measurementDelay;
       }
 
-      int ReadSendMeasurementDelay()
+      unsigned int ReadSendMeasurementDelay()
       {
-        int sendMeasurementDelay;
-        if(!readIntFromEEPROM(adressSendMeasurementDelay, &sendMeasurementDelay))
+        #ifdef IsDebugActive
+        return DebugSendMeasurementDelay;
+        #endif
+        unsigned int sendMeasurementDelay;
+        if(!readUnsignedIntFromEEPROM(adressSendMeasurementDelay, &sendMeasurementDelay))
         {
           sendMeasurementDelay = 1200; //20 min
         }
@@ -301,22 +320,34 @@
 
       void WriteTempCoolerStart(float value)
       {
+        #ifdef IsDebugActive
+        return;
+        #endif
         writeFloatToEEPROM(adressTempCoolerStart, value);
       }
 
       void WriteTempHeaterStart(float value)
       {
+        #ifdef IsDebugActive
+        return;
+        #endif
         writeFloatToEEPROM(adressTempHeaterStart, value);
       }
 
       void WriteMeasurementDelay(int value)
       {
-        writeIntToEEPROM(adressMeasurementDelay, value);
+        #ifdef IsDebugActive
+        return;
+        #endif
+        writeUnsignedIntToEEPROM(adressMeasurementDelay, value);
       }
 
       void WriteSendMeasurementDelay(int value)
       {
-        writeIntToEEPROM(adressSendMeasurementDelay, value);
+        #ifdef IsDebugActive
+        return;
+        #endif
+        writeUnsignedIntToEEPROM(adressSendMeasurementDelay, value);
       }
 
   };
@@ -330,8 +361,8 @@
       float tempCoolerEnd;
       float tempHeaterStart;
       float tempHeaterEnd;
-      int measurementDelay;
-      int sendMeasurementDelay;
+      unsigned int measurementDelay;
+      unsigned int sendMeasurementDelay;
       unsigned long lastSync = 0;
       bool isConfigModified = false;
       unsigned long lastChangeAfterSync = 0;
@@ -362,8 +393,8 @@
         measurementDelay = EepromControllerInstance->ReadMeasurementDelay();
         sendMeasurementDelay = EepromControllerInstance->ReadSendMeasurementDelay();
 
-        SetTempCoolerStartInternal(tempCoolerStart);
-        SetTempHeaterStartInternal(tempHeaterStart);
+        SetTempCoolerStartInternal(tempCoolerStartLocal);
+        SetTempHeaterStartInternal(tempHeaterStartLocal);
       }
       float GetTempCoolerEnd()
       {
@@ -399,15 +430,15 @@
         EepromControllerInstance->WriteTempHeaterStart(value);
         SetTempHeaterStartInternal(value);
       }
-      int GetMeasurementDelay()
+      unsigned int GetMeasurementDelay()
       {
         return measurementDelay;
       }
-      int GetSendMeasurementDelay()
+      unsigned int GetSendMeasurementDelay()
       {
         return sendMeasurementDelay;
       }
-      void SetMeasurementDelay(int value, bool localUpdate = true)
+      void SetMeasurementDelay(unsigned int value, bool localUpdate = true)
       {
         if(localUpdate)
         {
@@ -416,7 +447,7 @@
         EepromControllerInstance->WriteMeasurementDelay(value);
         measurementDelay = value;
       }
-      void SetSendMeasurementDelay(int value, bool localUpdate = true)
+      void SetSendMeasurementDelay(unsigned int value, bool localUpdate = true)
       {
         if(localUpdate)
         {
@@ -454,18 +485,73 @@
 #ifndef TempStatus
   class TempStatus
   {
+    private:
+      TempConfig* TempConfigInstance;
     public:
       float ThermTemp;
       bool TempStateChanged;
-      int TempStateId;
-      TempStatus()
+      byte TempStateId;
+      TempStatus(const TempConfig* tempConfig)
       {
+        TempConfigInstance = tempConfig;
         TempStateId = TempStateNoAction;
+        ThermTemp= 0;
+        TempStateChanged = false;
       } 
+    void UpdateTempRegulation()
+    {
+      int thermVal = analogRead(pinThermometer);
+      // analogRead vrací číslo mezi 0 a 1023 proto deleni 1024, nasobení 5 je protože to je maximalni napětí
+      float thermVolt = (thermVal / 1024.0) * 5;
+      //TODO double check expresion
+      ThermTemp = minTemp + thermVolt * tempPerVolt;
+
+      switch(TempStateId)
+      {
+        case TempStateHeater:
+          if(ThermTemp > TempConfigInstance->GetTempHeaterEnd())
+          {
+            digitalWrite(pinHeater, LOW);
+            TempStateId = TempStateNoAction;
+            TempStateChanged= true;
+          }
+          break;
+        case TempStateCooler:
+          if(ThermTemp < TempConfigInstance->GetTempCoolerEnd())
+          {
+            digitalWrite(pinCooler, LOW);
+            TempStateId = TempStateNoAction;
+            TempStateChanged = true;
+          }
+          break;
+        case TempStateNoAction:
+        default:
+          if(ThermTemp < TempConfigInstance->GetTempHeaterStart())
+          {
+            digitalWrite(pinHeater, HIGH);
+            TempStateId = TempStateHeater;
+            TempStateChanged = true;
+          }
+          else if (ThermTemp > TempConfigInstance->GetTempCoolerStart())
+          {
+            digitalWrite(pinCooler, HIGH);
+            TempStateId = TempStateCooler;
+            TempStateChanged = true;
+          }
+          break;
+      }
+    }
   };
 #endif
 
 #ifndef DataMeasurement
+  class DataPoint {
+    public:
+      DataPoint(){}
+      unsigned long timeOffset;
+      int tempState;
+      float temp;
+  };
   class DataMeasurement {
     private:
       Scheduler* SchedulerInstance;
@@ -473,44 +559,49 @@
       TempConfig* TempConfigInstance;
       unsigned long lastTimeStamp;
 
-      char* data = "";
+      int usedDataPoints = 0;
+      int filledDataPoints = 0;
       void MeasureData()
       {
-        String newState;
-        
+        if(filledDataPoints == usedDataPoints)
+        {
+          Data[usedDataPoints] = DataPoint{};
+          filledDataPoints++;
+        }
         switch(TempStatusInstance->TempStateId)
         {
           case TempStateHeater:
-          newState = "Heat";
+            Data[usedDataPoints].tempState = TempStateHeater;
             break;
           case TempStateCooler:
-          newState = "Cool";
+            Data[usedDataPoints].tempState = TempStateCooler;
             break;
           default:
           case TempStateNoAction:
-            newState = "Idle";
+            Data[usedDataPoints].tempState = TempStateNoAction;
             break;
         }
-        unsigned long timestamp = SchedulerInstance->GetCurrentTimestamp();
-        unsigned long timeElapsed = SchedulerInstance->GetTimeSinceTimestamp(lastTimeStamp);
-        if(data != "")
-        {
-          sprintf(data,"%s %ul %s %f", data, timeElapsed, newState, TempStatusInstance->ThermTemp);
-        }
-        else
-        {
-          sprintf(data,"%ul %s %f", timeElapsed, newState, TempStatusInstance->ThermTemp);
-        }
-        lastTimeStamp = timestamp;
+        Data[usedDataPoints].timeOffset = SchedulerInstance->GetTimeSinceTimestamp(lastTimeStamp);
+        Data[usedDataPoints].temp = TempStatusInstance->ThermTemp;
+        usedDataPoints++;
+        lastTimeStamp = SchedulerInstance->GetCurrentTimestamp();
       }
     public:
+      //has to be public to be reasonably acessible
+      DataPoint Data[50];
+      int GetDataPointCount()
+      {
+        int returnUsedDataPoints = usedDataPoints;
+        usedDataPoints = 0;
+        return returnUsedDataPoints;
+      }
       DataMeasurement(const Scheduler* scheduler, const TempStatus* tempStatus, const TempConfig* tempConfig)
       {
         SchedulerInstance = scheduler;
         TempStatusInstance = tempStatus;
         TempConfigInstance = tempConfig;
         lastTimeStamp = SchedulerInstance->GetCurrentTimestamp();
-        SchedulerInstance->SetNextRun(SchedulerMeasurmentEventId, 0);
+        SchedulerInstance->SetNextRun(SchedulerMeasurmentEventId, TempConfigInstance->GetMeasurementDelay());
       };
       void CheckMeasurementSchedule()
       {
@@ -520,47 +611,61 @@
           MeasureData();
         }
       }
-      char* GetDataToSend()
-      {
-        char* dataLocal = data;
-        data = "";
-        return dataLocal;
-      }
   };
 #endif
 
 #ifndef DataSender
-  String serialCauseSendTemp = "sendTemp";
-  String serialCauseConfigReq = "configReq";
-  
-  const int StateAwaitHeader = 0;
-  const int StateReadParam = 1;
-  const int StateEvaluateMessage = 2;
 
-  const String messageInHeaderStart = "Msg";
-  const int messageInConfigUpdateTypeId = 0;
-  const String messageInTypeConfigUpdate = "CfgUp";
-  const String messageInHeaderParamCount = "PrmC";
-  const String messageInParamNameTempHeaterStart = "TmpHeat";
-  const int messageInParamIdentTempHeaterStart = 0;
-  const String messageInParamNameTempCoolerStart = "TmpCool";
-  const int messageInParamIdentTempCoolerStart = 1;
-  const String messageInParamNameMeasurementDelay = "MeasDly";
-  const int messageInParamIdentMeasurementDelay = 2;
-  const String messageInParamNameSendMeasurementDelay = "SendDly";
-  const int messageInParamIdentSendMeasurementDelay = 3;
+  //space is used as separator and at message start
+  #define maxHeaderSize 16
+  //9 - spaces and param identifier, 10 - param value
+  #define maxParamSize 19
+  
+  #define serialCauseSendTemp "sendTemp"
+  #define serialCauseConfigReq "configReq"
+  
+  #define StateAwaitHeader 0
+  #define StateReadParam 1
+  #define StateEvaluateMessage 2
+
+  #define messageInHeaderStart "Msg"
+  #define messageInConfigUpdateTypeId 0
+  #define messageInTypeConfigUpdate "CfgUp"
+  #define messageInHeaderParamCount "PrmC"
+  #define messageInParamNameTempHeaterStart "TmpHeat"
+  #define messageInParamIdentTempHeaterStart 0
+  #define messageInParamNameTempCoolerStart "TmpCool"
+  #define messageInParamIdentTempCoolerStart 1
+  #define messageInParamNameMeasurementDelay "MeasDly"
+  #define messageInParamIdentMeasurementDelay 2
+  #define messageInParamNameSendMeasurementDelay "SendDly"
+  #define messageInParamIdentSendMeasurementDelay 3
+
+
+  #define datatypeFloat 0
+  #define datatypeInt 1
+  #define datatypeUInt 2
+  #define datatypeMesasurementData 3
+  
+  #define paramNameTimestamp "timestamp"
+  #define paramNameMin "min"
+  #define paramNameMax "max"
+  #define paramNameSendInterval "sendInterval"
+  #define paramNameInterval "interval"
+  #define paramNameMeasurementData "measurementData"
 
   class ParamData {
     public:
-      ParamData(bool isStringDatatype, String valueString, String paramName)
+      ParamData(byte datatype, char* paramName)
       {
-        IsStringDatatype = isStringDatatype;
-        ValueString = valueString;   
+        Datatype = datatype;
         ParamName = paramName;
       }
-      bool IsStringDatatype;
-      String ValueString;
-      String ParamName;
+      byte Datatype;
+      int ValueInt;
+      unsigned int ValueUInt;
+      float ValueFloat;
+      char* ParamName;
   };
   
   class Packet{
@@ -568,58 +673,101 @@
       byte bytesWriten = 0;
     public:
       Packet(){}
-      int MessageTypeId = -1;
-      int MessageState = StateAwaitHeader;
-      int MessageStateBytes = 0;
-      int ParamCount = -1;
-      int ParamsRead = 0;
+      byte MessageTypeId = -1;
+      byte MessageState = StateAwaitHeader;
+      byte ParamCount = -1;
+      byte ParamsRead = 0;
       String ParamValues[4];
       void ResetData()
       {
         MessageState = StateAwaitHeader;
         MessageTypeId = -1;
-        MessageStateBytes = 0;
         ParamCount = -1;
         ParamsRead = 0;
       }
   };
 
+  #define causeStringStart "{ \"cause\": \""
+  #define causeStringEnd "\""
+  #define paramNameStringStart ", \""
+  #define paramNameStringEnd "\": "
   class DataSender {
     private:
       Scheduler* SchedulerInstance;
       TempConfig* TempConfigInstance;
       DataMeasurement* DataMeasurementInstance;
       Packet readHeaderData;
-      void sendSerialMessage(String cause, ParamData params[], int itemCount)
+      bool firstLoop = true;
+      void sendSerialMessage(char* cause, ParamData params[], byte itemCount)
       {
-        Serial.print("{ \"cause\": \"");
+        Serial.print(causeStringStart);
         Serial.print(cause);
-        Serial.print("\"");
-        for (int i=0; i<itemCount; i++) {
-          Serial.print(", \"");
+        Serial.print(causeStringEnd);
+        for (byte i=0; i<itemCount; i++) {
+          Serial.print(paramNameStringStart);
           Serial.print(params[i].ParamName);
-          Serial.print("\": ");
-          if(params[i].IsStringDatatype)
+          Serial.print(paramNameStringEnd);
+          switch(params[i].Datatype)
           {
-            Serial.print("\"");
-          }
-          Serial.print(params[i].ValueString);
-          if(params[i].IsStringDatatype)
-          {
-            Serial.print("\"");
+            case datatypeFloat:
+              Serial.print(params[i].ValueFloat);
+              break;
+            case datatypeInt:
+              Serial.print(params[i].ValueInt);
+              break;
+            case datatypeUInt:
+              Serial.print(params[i].ValueUInt);
+              break;
+            case datatypeMesasurementData:
+              int maxDataPointId = DataMeasurementInstance->GetDataPointCount() - 1;
+              
+              Serial.print(F("["));
+              for(int i = 0; i <= maxDataPointId; i++)
+              {
+                Serial.print(F("{"));
+                Serial.print(F("\"time\":"));
+                Serial.print(DataMeasurementInstance->Data[i].timeOffset);
+                Serial.print(F(",\"tempState\":\""));
+                switch(DataMeasurementInstance->Data[i].tempState)
+                {
+                  case TempStateHeater:
+                    Serial.print(F("Heat"));
+                    break;
+                  case TempStateCooler:
+                    Serial.print(F("Cooler"));
+                    break;
+                  default:
+                  case TempStateNoAction:
+                    Serial.print(F("Inactive"));
+                    break;
+                }
+                Serial.print(F("\",\"temp\":"));
+                Serial.print(DataMeasurementInstance->Data[i].temp);
+                Serial.print(F("}"));
+                if(i != maxDataPointId)
+                {
+                  Serial.print(F(","));
+                }
+              }
+              Serial.print(F("]"));
+              break;
+
+            default:
+              break;
           }
         }
-        Serial.println("}");
+        Serial.println(F("}"));
       };
 
-      int minBufferSize = maxHeaderSize;
-      //space is used as separator and at message start
-      const int maxHeaderSize = 16;
-      //9 - spaces and param identifier, 10 - param value
-      const int maxParamSize = 19; 
-      void SendConfigRequest()
+      byte minBufferSize = maxHeaderSize;
+      void SendConfigRequest(int configChangeOffset)
       {
-        ParamData params[] = { ParamData(false, String(TempConfigInstance->GetTempCoolerStart()), "min"), ParamData(false, String(TempConfigInstance->GetTempHeaterStart()), "max"), ParamData(false, String(TempConfigInstance->GetMeasurementDelay()), "interval"), ParamData(false, String(TempConfigInstance->GetSendMeasurementDelay()), "sendInterval") };
+        ParamData params[] = { ParamData(datatypeInt, paramNameTimestamp), ParamData(datatypeFloat, paramNameMin), ParamData(datatypeFloat, paramNameMax), ParamData(datatypeUInt, paramNameInterval), ParamData(datatypeUInt, paramNameSendInterval) };
+        params[0].ValueInt = configChangeOffset;
+        params[1].ValueFloat = TempConfigInstance->GetTempCoolerStart();
+        params[2].ValueFloat = TempConfigInstance->GetTempHeaterStart();
+        params[3].ValueUInt = TempConfigInstance->GetMeasurementDelay();
+        params[4].ValueUInt = TempConfigInstance->GetSendMeasurementDelay();
         sendSerialMessage(serialCauseConfigReq, params, sizeof params/sizeof params[0]);
       };
     public:
@@ -628,8 +776,7 @@
         SchedulerInstance = scheduler;
         TempConfigInstance = tempConfig;
         DataMeasurementInstance = dataMeasurement;
-        SendConfigRequest();
-        SchedulerInstance->SetNextRun(SchedulerMeasurmentEventId, TempConfigInstance->GetMeasurementDelay());
+        SchedulerInstance->SetNextRun(SchedulerSendMeasurmentEventId, TempConfigInstance->GetSendMeasurementDelay());
       };
        
       void CheckSerialIn()
@@ -637,21 +784,21 @@
         int unreadBytes = Serial.available();
         if(unreadBytes >= minBufferSize)
         {
-          String readString;
+          char readString[10];
           switch(readHeaderData.MessageState)
           {
             case StateAwaitHeader:
               //mesage start string
-              readString = Serial.readStringUntil(' ');
-              if(messageInHeaderStart != readString)
+              Serial.readBytesUntil(' ', readString, 10);
+              if(strcmp(messageInHeaderStart, readString) != 0)
               {
                 break;
               }
               //messageType
-              readString = Serial.readStringUntil(' ');
+              Serial.readBytesUntil(' ', readString, 10);
 
               bool messageTypeNotFound = false;
-              if(readString == messageInTypeConfigUpdate)
+              if(strcmp(messageInTypeConfigUpdate, readString) == 0)
               {
                 readHeaderData.MessageTypeId = messageInConfigUpdateTypeId;
                 for(int i =0; i<4; i++)
@@ -667,38 +814,38 @@
               {
                 break;
               }
-              readString = Serial.readStringUntil(' ');
-              if(readString != messageInHeaderParamCount)
+              Serial.readBytesUntil(' ', readString, 10);
+              if(strcmp(messageInHeaderParamCount, readString) != 0)
               {
                 readHeaderData.ResetData();
                 break;
               }
-              readString = Serial.readStringUntil(' ');
-              if(readString.length() != 1 || readString[0] < '0' || readString[0]  > '9' )
+              byte length = Serial.readBytesUntil(' ', readString, 10);
+              if(length != 1 || readString[0] < '0' || readString[0]  > '9' )
               {
                 readHeaderData.ResetData();
                 break;
               }
-              readHeaderData.ParamCount = readString.toInt();
+              readHeaderData.ParamCount = (byte)readString[0] - 48;
               minBufferSize = maxParamSize;
               readHeaderData.MessageState = StateReadParam;
               break;
             case StateReadParam:
-              readString = Serial.readStringUntil(' ');
+              Serial.readBytesUntil(' ', readString, 10);
               int messageIdent;
-              if(messageInParamNameTempHeaterStart != readString)
+              if(strcmp(messageInParamNameTempHeaterStart, readString) == 0)
               {
                 messageIdent = messageInParamIdentTempHeaterStart;
               }
-              else if(messageInParamNameTempCoolerStart != readString)
+              else if(strcmp(messageInParamNameTempCoolerStart, readString) == 0)
               {
                 messageIdent = messageInParamIdentTempCoolerStart;
               }
-              else if(messageInParamNameMeasurementDelay != readString)
+              else if(strcmp(messageInParamNameMeasurementDelay, readString) == 0)
               {
                 messageIdent = messageInParamIdentMeasurementDelay;
               }
-              else if(messageInParamNameSendMeasurementDelay != readString)
+              else if(strcmp(messageInParamNameSendMeasurementDelay, readString) == 0)
               {
                 messageIdent = messageInParamIdentSendMeasurementDelay;
               }
@@ -708,7 +855,7 @@
                 minBufferSize = maxHeaderSize;
                 break;
               }
-              readString = Serial.readStringUntil(' ');
+              Serial.readBytesUntil(' ', readString, 10);
               readHeaderData.ParamValues[messageIdent] = readString;
               readHeaderData.ParamsRead++;
               if(readHeaderData.ParamsRead < readHeaderData.ParamCount)
@@ -759,11 +906,21 @@
 
       void CheckComunicationSchedule()
       {
-        if(SchedulerInstance->IsScheduleElapsed(SchedulerMeasurmentEventId))
+        if(firstLoop)
         {
-          SchedulerInstance->SetNextRunOffsetFromSheduledTime(SchedulerMeasurmentEventId, TempConfigInstance->GetMeasurementDelay());
-          ParamData params[] = { ParamData(true, DataMeasurementInstance->GetDataToSend(), "dataString") };
+          SendConfigRequest(-1);
+          firstLoop = false;
+        }
+        if(SchedulerInstance->IsScheduleElapsed(SchedulerSendMeasurmentEventId))
+        {
+          SchedulerInstance->SetNextRunOffsetFromSheduledTime(SchedulerSendMeasurmentEventId, TempConfigInstance->GetSendMeasurementDelay());
+          ParamData params[] = { ParamData(datatypeMesasurementData, paramNameMeasurementData) };
           sendSerialMessage(serialCauseSendTemp, params, sizeof params / sizeof params[0]);
+          unsigned long configChangeOffset = TempConfigInstance->GetConfigUpdateOffset();
+          if(configChangeOffset != 0)
+          {
+            SendConfigRequest(configChangeOffset);
+          }
         }
       }
   };  
@@ -771,25 +928,28 @@
 
 #ifndef LcdControler
   LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+  #define LcdStateInactive 0
+  #define LcdStateStatus 1
+  #define LcdStateTemp 2
+  #define LcdStateCoolerSetting 3
+  #define LcdStateCoolerSettingUpdate 4
+  #define LcdStateHeaterSetting 5
+  #define LcdStateHeaterSettingUpdate 6
+
+  #define ModeIsHeating true
+  #define ModeIsCooling false
 
   class LcdControler {
     private:
       Scheduler* SchedulerInstance;
       TempConfig* TempConfigInstance;
       TempStatus* TempStatusInstance;
-      static const int LcdStateInactive = 0;
-      static const int LcdStateStatus = 1;
-      static const int LcdStateTemp = 2;
-      static const int LcdStateCoolerSetting = 3;
-      static const int LcdStateCoolerSettingUpdate = 4;
-      static const int LcdStateHeaterSetting = 5;
-      static const int LcdStateHeaterSettingUpdate = 6;
       int lcdStateId = LcdStateInactive;
       float tempSettingUpdateMax;
       float tempSettingUpdateMin;
       float tempSettingUpdate;
       
-      bool checkAndSetLcdSleep() {
+      void checkAndSetLcdSleep() {
         if (SchedulerInstance->IsScheduleElapsed(SchedulerScreenShutoffEventId)) {
           switch (lcdStateId) {
             case LcdStateCoolerSettingUpdate:
@@ -805,17 +965,16 @@
           lcd.clear();
           lcd.noDisplay();
         }
-        return false;
       }
 
       void delayLcdSleep() {
-        SchedulerInstance->SetNextRunOffsetFromCurrentTime(SchedulerMeasurmentEventId, 120);
+        SchedulerInstance->SetNextRunOffsetFromCurrentTime(SchedulerScreenShutoffEventId, 120);
       }
 
       void firstDrawLcdStatus() {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Current state: ");
+        lcd.print(F("Current state: "));
         redrawLcdStatus();
       }
 
@@ -824,14 +983,14 @@
         switch(TempStatusInstance->TempStateId)
         {
           case TempStateHeater:
-            lcd.print("Heating");
+            lcd.print(F("Heating"));
             break;
           case TempStateCooler:
-            lcd.print("Cooling");
+            lcd.print(F("Cooling"));
             break;
           default:
           case TempStateNoAction:
-            lcd.print("Idle   ");
+            lcd.print(F("Idle   "));
             break;
         }
         return;
@@ -839,23 +998,30 @@
       void firstDrawLcdTemp(float temp) {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Current temp: ");
+        lcd.print(F("Current temp: "));
         redrawLcdTemp(temp);
         return;
       }
       void redrawLcdTemp(float temp) {
         lcd.setCursor(0, 1);
         lcd.print(temp);
-        lcd.print(" C");
+        lcd.print(F(" C"));
         ///mezery na konci jsou aby prepsaly konec stringu když se zmenšuje počet tistenejch znaku
-        lcd.print("       ");
+        lcd.print(F("       "));
         return;
       }
-      void firstDrawLcdSetting(String mode, float targetTemp) {
+      void firstDrawLcdSetting(bool isModeHeating, float targetTemp) {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print(mode);
-        lcd.print(" to: ");
+        if(isModeHeating)
+        {
+          lcd.print(F("Heating"));
+        }
+        else
+        {
+          lcd.print(F("Cooling"));
+        }
+        lcd.print(F(" to: "));
         redrawLcdSetting(targetTemp);
         return;
       }
@@ -863,7 +1029,7 @@
         lcd.setCursor(0, 1);
         lcd.print(targetTemp);
         ///mezery na konci jsou aby prepsaly konec stringu když se zmenšuje počet tistenejch znaku
-        lcd.print(" C   ");
+        lcd.print(F(" C   "));
         return;
       }
       void firstDrawLcdSettingUpdate() {
@@ -882,11 +1048,11 @@
       void redrawLcdSettingUpdate() {
         lcd.setCursor(0, 1);
         lcd.print(tempSettingUpdate);
-        lcd.print(" C ");
+        lcd.print(F(" C "));
         if (tempSettingUpdate == tempSettingUpdateMin || tempSettingUpdate == tempSettingUpdateMax) {
-          lcd.print("Limit");
+          lcd.print(F("Limit"));
         }
-        lcd.print("       ");
+        lcd.print(F("       "));
         ///mezery na konci jsou aby prepsaly konec stringu když se zmenšuje počet tistenejch znaku
         lcd.setCursor(2, 1);
         return;
@@ -931,10 +1097,10 @@
               firstDrawLcdTemp(TempStatusInstance->ThermTemp);
             } else if (buttonPlusState) {
               lcdStateId = LcdStateHeaterSetting;
-              firstDrawLcdSetting("Heating", TempConfigInstance->GetTempHeaterStart());
+              firstDrawLcdSetting(ModeIsHeating, TempConfigInstance->GetTempHeaterStart());
             } else if (buttonMinusState) {
               lcdStateId = LcdStateCoolerSetting;
-              firstDrawLcdSetting("Cooling", TempConfigInstance->GetTempCoolerStart());
+              firstDrawLcdSetting(ModeIsCooling, TempConfigInstance->GetTempCoolerStart());
             } else {
               buttonPressed = false;
               if (TempStatusInstance->TempStateChanged) {
@@ -948,10 +1114,10 @@
               firstDrawLcdStatus();
             } else if (buttonPlusState) {
               lcdStateId = LcdStateHeaterSetting;
-              firstDrawLcdSetting("Heating", TempConfigInstance->GetTempHeaterStart());
+              firstDrawLcdSetting(ModeIsHeating, TempConfigInstance->GetTempHeaterStart());
             } else if (buttonMinusState) {
               lcdStateId = LcdStateCoolerSetting;
-              firstDrawLcdSetting("Cooling", TempConfigInstance->GetTempCoolerStart());
+              firstDrawLcdSetting(ModeIsCooling, TempConfigInstance->GetTempCoolerStart());
             } else {
               buttonPressed = false;
               redrawLcdTemp(TempStatusInstance->ThermTemp);
@@ -1036,15 +1202,17 @@
 #endif
 
 
-TempStatus TempStatusInstance;
 Scheduler SchedulerInstance;
 EepromController EepromControllerInstance;
 TempConfig TempConfigInstance{&EepromControllerInstance, &SchedulerInstance};
+TempStatus TempStatusInstance{&TempConfigInstance};
 LcdControler LcdControlerInstance{&SchedulerInstance, &TempConfigInstance, &TempStatusInstance};
 DataMeasurement DataMeasurementInstance{&SchedulerInstance, &TempStatusInstance, &TempConfigInstance};
 DataSender DataSenderInstace{&SchedulerInstance, &TempConfigInstance, &DataMeasurementInstance};
 
 void setup() {
+  //DO NOT MOVE THIS OR EVERYTHING BREAKS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  Serial.begin(9600);
   pinMode(pinCooler, OUTPUT);
   pinMode(pinHeater, OUTPUT);
   pinMode(pinLcdV0, OUTPUT);
@@ -1055,61 +1223,16 @@ void setup() {
   digitalWrite(pinLcdV0, LOW);
   digitalWrite(pinLcdLedPlus, LOW);
 
-  Serial.begin(9600);
 }
 
 void loop() {
   SchedulerInstance.SchedulerUpdate();
   DataSenderInstace.CheckSerialIn();
-  updateTempRegulation();
+  TempStatusInstance.UpdateTempRegulation();
   LcdControlerInstance.UpdateLcd();
+  DataMeasurementInstance.CheckMeasurementSchedule();
   DataSenderInstace.CheckComunicationSchedule();
   delay(1000);
 }
 
 
-void updateTempRegulation()
-{
-  int thermVal = analogRead(pinThermometer);
-  // analogRead vrací číslo mezi 0 a 1023 proto deleni 1024, nasobení 5 je protože to je maximalni napětí
-  float thermVolt = (thermVal / 1024.0) * 5;
-  //TODO double check expresion
-  float thermTemp = minTemp + thermVolt * tempPerVolt;
-
-  bool tempStateChanged = false;
-  switch(TempStatusInstance.TempStateId)
-  {
-    case TempStateHeater:
-      if(thermTemp > TempConfigInstance.GetTempHeaterEnd())
-      {
-        digitalWrite(pinHeater, LOW);
-        TempStatusInstance.TempStateId = TempStateNoAction;
-        tempStateChanged= true;
-      }
-      break;
-    case TempStateCooler:
-      if(thermTemp < TempConfigInstance.GetTempCoolerEnd())
-      {
-        digitalWrite(pinCooler, LOW);
-        TempStatusInstance.TempStateId = TempStateNoAction;
-        tempStateChanged = true;
-      }
-      break;
-    case TempStateNoAction:
-    default:
-      if(thermTemp < TempConfigInstance.GetTempHeaterStart())
-      {
-        digitalWrite(pinHeater, HIGH);
-        TempStatusInstance.TempStateId = TempStateHeater;
-        tempStateChanged = true;
-      }
-      else if (thermTemp > TempConfigInstance.GetTempCoolerStart())
-      {
-        digitalWrite(pinCooler, HIGH);
-        TempStatusInstance.TempStateId = TempStateCooler;
-        tempStateChanged = true;
-      }
-      break;
-  }
-  TempStatusInstance.TempStateChanged = tempStateChanged;
-}
