@@ -137,7 +137,7 @@ const SensorUpdateModal = (props: Props) => {
                                 }}
                             />
                             <Form.Text className="text-muted">
-                                Data will be measured every {updatedSensor.config.sendInterval} seconds.
+                                Data will be measured every {updatedSensor.config.measureInterval} seconds.
                             </Form.Text>
                         </Form.Group>
                     </Col>
