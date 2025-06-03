@@ -1,301 +1,206 @@
-import { Badge, Button, Col, Container, Row, Spinner, Table } from "react-bootstrap";
-import { PieChart } from "@mui/x-charts";
 import { useEffect, useState } from "react";
-// import { v4 as uuidv4 } from 'uuid';
-import { useNavigate } from "react-router-dom";
-import dayjs from "dayjs";
+import { Alert, Button, Col, Container, Row, Spinner } from "react-bootstrap";
 
-import { useMainContext } from "../../customHooks/useMainContext";
+import { Organisation } from "../../../API/requests/organisationRequests";
+import measurementPointsRequests, { MeasurementPoint } from "../../../API/requests/measurementPointsRequests";
+import { useOrganisationContext } from "../../customHooks/useOrganisationsContext";
 
-import { SprintType, SprintCreateType } from "../../models/SprintModel";
-import { useSprint } from "../../models/API/useSprint";
-import { useTask } from "../../models/API/useTask";
+import OrganisationDeleteModal from "./modals/OrganisationDeleteModal";
+import OrganisationUpdateModal from "./modals/OrganisationUpdateModal";
+import MeasurementPointAddModal from "./modals/MeasurementPointAddModal";
+import MeasurementPointDeleteModal from "./modals/MeasurementPointDeleteModal";
+import MeasurementPointUpdateModal from "./modals/MeasurementPointUpdateModal";
 
-import CreateSprintModal from "./modals/CreateSprintModal";
-import { TaskType } from "../../models/TaskModel";
+import MeasurementPointCard from "./components/measurementPointCard.tsx/MeasurementPointCard";
 
-// import { tasksMock } from "../../mockData/mockTasks";
-// import { SprintType } from "../../mockData/mockProjectsAndSprints";
+export type DashboardModalVersion = 'update-organisation' | 'delete-organisation' | 'add-measurement-point' | 'update-measurement-point' | 'delete-measurement-point' | '';
 
 const Dashboard = () => {
-    const { selectedProject } = useMainContext();
-
-    const SprintApi = useSprint();
-    const TaskApi = useTask();
-
-    const navigate = useNavigate();
+    const { selectedOrganisation } = useOrganisationContext();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [modalVersion, setModalVersion] = useState<'create-sprint' | ''>('');
+    const [modalVersion, setModalVersion] = useState<DashboardModalVersion>('');
+    const [alerts, setAlerts] = useState<{ type: string, message: string }[]>([]);
 
-    const [projectSprints, setProjectSprints] = useState<SprintType[]>([]);
-    type ProjectStatisticType = {
-        [key: string]: { // id of the sprint
-            todo: number, progress: number, done: number,
-        }
+    const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([]);
+    const [editedMeasurementPoint, setEditedMeasurementPoint] = useState<MeasurementPoint | null>(null);
+
+    const acknowladgeAddedMeasurementPoint = (measurementPoint: MeasurementPoint) => {
+        setMeasurementPoints([...measurementPoints, measurementPoint]);
     }
-    const [projectStatistics, setProjectStatistics] = useState<ProjectStatisticType>({});
-
-    // interface SprintActionButtonProps { sprintIndex: number, }
-    // const SprintActionButton = ({ sprintIndex }: SprintActionButtonProps) => {
-    //     const sprint = projectSprints[sprintIndex];
-
-    //     const updateSprintStatus = (newStatus: "DONE" | "ACTIVE" | "INACTIVE" | "PLANNED") => {
-    //         // console.log("Updating sprint status to: ", newStatus);
-    //         const globalSprintIndex = sprintsMock.findIndex((globalSprint) => globalSprint.id === sprint.id);
-    //         // console.log("sprint.id: ", sprint.id);
-    //         // console.log("global sprints: ", sprintsMock);
-    //         // console.log("global sprint index: ", globalSprintIndex);
-    //         if (globalSprintIndex !== -1) {
-    //             // Update global sprintsMock
-    //             sprintsMock[globalSprintIndex].status = newStatus;
-
-    //             // Update local projectSprints
-    //             const newProjectSprints = [...projectSprints];
-    //             newProjectSprints[sprintIndex].status = newStatus;
-    //             setProjectSprints(newProjectSprints);
-    //         }
-    //     };
-
-    //     switch (sprint.status) {
-    //         case "DONE": {
-    //             return null; // No action for "DONE" sprints
-    //         }
-    //         case "ACTIVE": {
-    //             return (
-    //                 <Button
-    //                     variant="primary"
-    //                     onClick={() => updateSprintStatus("DONE")}
-    //                 >
-    //                     Finish
-    //                 </Button>
-    //             );
-    //         }
-    //         case "INACTIVE": {
-    //             return (
-    //                 <Button
-    //                     variant="primary"
-    //                     onClick={() => updateSprintStatus("ACTIVE")}
-    //                 >
-    //                     Start
-    //                 </Button>
-    //             );
-    //         }
-    //         case "PLANNED": {
-    //             return (
-    //                 <Button
-    //                     variant="primary"
-    //                     onClick={() => updateSprintStatus("ACTIVE")}
-    //                 >
-    //                     Start
-    //                 </Button>
-    //             );
-    //         }
-    //         default: {
-    //             return null;
-    //         }
-    //     }
-    // };
-
-    const getSprintBadgeColor = (sprint: SprintType) => {
-        switch (sprint.status) {
-            case "DONE": { return "success"; }
-            case "ACTIVE": { return "warning"; }
-            default: { return "secondary"; }
-        }
+    const acknowladgeUpdatedMeasurementPoint = (measurementPoint: MeasurementPoint) => {
+        setMeasurementPoints((prevMeasurementPoints) => {
+            const index = prevMeasurementPoints.findIndex((mp) => mp._id === measurementPoint._id);
+            if (index === -1) { return prevMeasurementPoints; }
+            const newMeasurementPoints = [...prevMeasurementPoints];
+            newMeasurementPoints[index] = measurementPoint;
+            return newMeasurementPoints;
+        });
+    }
+    const acknowladgeDeletedMeasurementPoint = (measurementPointId: string) => {
+        setMeasurementPoints((prevMeasurementPoints) => {
+            const index = prevMeasurementPoints.findIndex((mp) => mp._id === measurementPointId);
+            if (index === -1) { return prevMeasurementPoints; }
+            const newMeasurementPoints = [...prevMeasurementPoints];
+            newMeasurementPoints.splice(index, 1);
+            return newMeasurementPoints;
+        });
     }
 
-    const addNewSprint = async (newSprint: SprintCreateType) => {
-        try {
-            console.log(newSprint);
-            if (!selectedProject) { return false; }
-            const resultSprint: SprintType = await SprintApi.createSprint(newSprint);
-            if (!resultSprint._id) {
-                throw new Error("Failed to create sprint");
-            }
-            // console.log("resultSprint: ", resultSprint);
-            setProjectSprints([...projectSprints, resultSprint]);
-            return true;
-        } catch (err) {
-            console.error("addNewSprint - error: ", err);
-            return false;
-        }
-    }
 
     useEffect(() => {
-        const fetchData = async () => {
-            if (!selectedProject) {
-                throw new Error("fetchData - project is not selected");
-            }
+        const fetchMeasurementPoints = async (selectedOrganisation: Organisation) => {
             try {
                 setIsLoading(true);
-
-                const allSprints: SprintType[] = await SprintApi.getSprints();
-                if (!Array.isArray(allSprints)) {
-                    throw new Error("Failed to get Project Sprints");
-                }
-                // console.log("fetchData - projecSprints: ", allSprints); // TODO - all sprints for now
-                const projectSprints = allSprints.filter((sprint) => sprint.projectId === selectedProject._id);
-                console.log("projectSprints: ", projectSprints);
-
-                const tasks = await TaskApi.getTasks() as TaskType[];
-                if (!Array.isArray(tasks)) {
-                    throw new Error("Failed to get Tasks");
-                }
-                console.log("tasks: ", tasks);
-
-
-                const newStats: ProjectStatisticType = {};
-
-                projectSprints.forEach((sprint) => {
-                    const sprintTasks = tasks.filter((task) => {
-                        if (!task.sprintId) { return false; }
-                        return task.sprintId === sprint._id;
-                    });
-                    console.log("sprintTasks: ", sprintTasks);
-
-                    sprintTasks.forEach((sprintTask) => {
-                        if (!newStats[sprint._id]) { newStats[sprint._id] = { done: 0, progress: 0, todo: 0 } };
-                        const sprintStats = newStats[sprint._id];
-                        // console.log("sprintStats: ", sprintStats);
-                        if (sprintTask.status === "DONE") { sprintStats.done = sprintStats.done + 1; }
-                        else if (sprintTask.status === "IN_PROGRESS") { sprintStats.progress = sprintStats.progress + 1; }
-                        else { sprintStats.todo = sprintStats.todo + 1; }
-                    })
+                const response = await measurementPointsRequests.listMeasurementPoints({
+                    organisationId: selectedOrganisation._id,
+                    pageInfo: {
+                        pageIndex: 0,
+                        pageSize: 100,
+                    },
                 })
-
-
-                console.log("newStas:", newStats);
-
-                setProjectSprints(projectSprints);
-                setProjectStatistics(newStats);
-            }
-            catch (err) {
-                console.log("fetchData - error: ", err);
+                setMeasurementPoints(response.measurementPoints);
+            } catch (err) {
+                console.error("Error fetching measurement points:", err);
+                setAlerts((prevAlerts) => [
+                    ...prevAlerts,
+                    { type: 'danger', message: 'Error fetching measurement points' }
+                ]);
             }
             finally { setIsLoading(false); }
         }
 
-        if (!selectedProject) {
-            setProjectSprints([]);
+        if (!selectedOrganisation) {
+            setMeasurementPoints([]);
             return;
         }
-        fetchData();
-    }, [selectedProject, setProjectSprints]);
+        fetchMeasurementPoints(selectedOrganisation);
+    }, [selectedOrganisation]);
 
-    const allSprintsStats = { todo: 0, progress: 0, done: 0 };
-    Object.values(projectStatistics).forEach((stats) => {
-        allSprintsStats.todo = allSprintsStats.todo + stats.todo;
-        allSprintsStats.progress = allSprintsStats.progress + stats.progress;
-        allSprintsStats.done = allSprintsStats.done + stats.done;
-    })
-
-    const percantageOfProjectDone = allSprintsStats.done / (allSprintsStats.done + allSprintsStats.progress + allSprintsStats.todo) * 100;
+    if (!selectedOrganisation) {
+        return (
+            <Container className="mt-4">
+                <h1>Dashboard</h1>
+                <Alert variant="warning"> <b>Please select an organisation</b> to view the dashboard.</Alert>
+            </Container>
+        );
+    }
 
     return (
         <>
-            {(modalVersion === "create-sprint" && selectedProject) && (
-                <CreateSprintModal
-                    projectId={selectedProject._id}
+            {/* ORGANISATION MODALS */}
+            {modalVersion === 'update-organisation' && (
+                <OrganisationUpdateModal
                     modalVersion={modalVersion}
                     setModalVersion={setModalVersion}
-                    addNewSprint={addNewSprint}
+                    editedOrganisation={selectedOrganisation}
+                />
+            )}
+            {modalVersion === 'delete-organisation' && (
+                <OrganisationDeleteModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    editedOrganisation={selectedOrganisation}
+                />
+            )}
+
+            {/* MEASUREMENT POINT MODALS */}
+            {modalVersion == 'add-measurement-point' && (
+                <MeasurementPointAddModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    acknowladgeAddedMeasurementPoint={acknowladgeAddedMeasurementPoint}
+                    selectedOrganisationId={selectedOrganisation._id}
+                />
+            )}
+            {(modalVersion === 'update-measurement-point' && editedMeasurementPoint) && (
+                <MeasurementPointUpdateModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    editedMeasurementPoint={editedMeasurementPoint}
+                    acknowladgeUpdatedMeasurementPoint={acknowladgeUpdatedMeasurementPoint}
+                />
+            )}
+            {(modalVersion === 'delete-measurement-point' && editedMeasurementPoint) && (
+                <MeasurementPointDeleteModal
+                    modalVersion={modalVersion}
+                    setModalVersion={setModalVersion}
+                    editedMeasurementPoint={editedMeasurementPoint}
+                    acknowladgeDeletedMeasurementPoint={acknowladgeDeletedMeasurementPoint}
                 />
             )}
 
             <Container className="mt-4">
-                <h1>DASHBOARD</h1>
-
-                {/* <p>PROJECT SPRINTS: {projectSprints.length}</p> */}
-
-                <Row className="bg-light rounded-4 border border-2 border-secondary p-2">
-                    <Col sm={12} lg={3} className="d-flex align-items-center justify-content-center">
-                        <h2>Overview of tasks:</h2>
+                <Row>
+                    <Col sm={10}>
+                        <h1>{selectedOrganisation.name}</h1>
+                        <p className="text-muted">Organisation ID: {selectedOrganisation._id}</p>
+                        <p>{selectedOrganisation.description}</p>
                     </Col>
-                    <Col sm={12} lg={6} className="d-flex justify-content-center" >
-                        {isLoading
-                            ? (
-                                <Spinner animation="border" role="status">
-                                    <span className="visually-hidden">Loading...</span>
-                                </Spinner>
-                            )
-                            : (
-                                <PieChart
-                                    series={[
-                                        {
-                                            data: [
-                                                { id: "todo", value: allSprintsStats.todo, label: 'TODO' },
-                                                { id: "progress", value: allSprintsStats.progress, label: 'In Progress' },
-                                                { id: "done", value: allSprintsStats.done, label: 'Done' },
-                                            ],
-                                        },
-                                    ]}
-                                    width={500}
-                                    height={200}
-                                />
-                            )
-                        }
-                    </Col>
-                    <Col sm={12} lg={3} className="d-flex align-items-center justify-content-center">
-                        <span className="display-4 fw-bold" >
-                            {!isNaN(percantageOfProjectDone) && `${percantageOfProjectDone.toFixed(0)}% Done`}
-                        </span>
+                    <Col sm={2} className="d-flex justify-content-end gap-2 align-items-start">
+                        <Button
+                            variant="warning"
+                            onClick={() => setModalVersion('update-organisation')}
+                        >
+                            <i className="bi bi-pencil-fill" />
+                            <span className="ms-1">Edit</span>
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => setModalVersion('delete-organisation')}
+                        >
+                            <i className="bi bi-trash" />
+                            <span className="ms-1">Delete</span>
+                        </Button>
                     </Col>
                 </Row>
+
+                {alerts.length > 0 && (
+                    <Row className="mt-4">
+                        <Col sm={12}>
+                            {alerts.map((alert, index) => (
+                                <Alert
+                                    key={index}
+                                    variant={alert.type}
+                                    dismissible
+                                >
+                                    {alert.message}
+                                </Alert>
+                            ))}
+                        </Col>
+                    </Row>
+                )}
 
                 <Row className="mt-4">
-                    <Table striped bordered hover>
-                        <thead>
-                            <tr>
-                                <th>SprintType Name</th>
-                                <th className="text-center">TODO (tasks)</th>
-                                <th className="text-center">In progress (tasks)</th>
-                                <th className="text-center">Done (tasks)</th>
-                                <th >Status</th>
-                                <th>From-To</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {projectSprints.map((sprint) => {
-                                const sprintStats = projectStatistics[sprint._id] ?? { todo: 0, progress: 0, done: 0 };
-                                return (
-                                    <tr key={sprint._id}>
-                                        <td>
-                                            <Button
-                                                variant="info"
-                                                onClick={() => navigate(`/sprint/${sprint._id}`)}
-                                            >
-                                                {sprint.name}
-                                            </Button>
-                                        </td>
-                                        <td className="text-center">
-                                            <span className="fw-bold">{sprintStats.todo}</span>
-                                        </td>
-                                        <td className="text-center">
-                                            <span className="fw-bold">{sprintStats.progress}</span>
-                                        </td>
-                                        <td className="text-center" >
-                                            <span className="fw-bold">{sprintStats.done}</span>
-                                        </td>
-                                        <td><Badge bg={getSprintBadgeColor(sprint)}>{sprint.status}</Badge></td>
-                                        {/* startDate and endDate doesnt have timestamp  */}
-                                        <td> {dayjs(sprint.startDate).format("DD.MM.YYYY")} - {dayjs(sprint.endDate).format("DD.MM.YYYY")} </td>
-                                        {/* <td>
-                                        <SprintActionButton sprintIndex={i} />
-                                    </td> */}
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </Table>
-                </Row>
+                    <Col sm={9}>
+                        <h2>Measurement Points</h2>
+                        {isLoading && (
+                            <Spinner animation="border" variant="primary" />
+                        )}
+                    </Col>
+                    <Col sm={3} className="d-flex justify-content-end align-items-start">
+                        <Button
+                            variant="success"
+                            onClick={() => setModalVersion('add-measurement-point')}
+                        >
+                            <i className="bi bi-plus" />
+                            <span className="ms-1">Add Measurement Point</span>
+                        </Button>
+                    </Col>
 
-                <Row>
-                    <Col lg={2} className="d-flex justify-content-start p-0">
-                        <Button onClick={() => setModalVersion('create-sprint')} variant="primary" size="lg">+ Sprint</Button>
+                    <Col sm={12} className="d-flex flex-column gap-3">
+                        {measurementPoints.map((measurementPoint) => (
+                            <MeasurementPointCard
+                                key={measurementPoint._id}
+                                measurementPoint={measurementPoint}
+                                setModalVersion={setModalVersion}
+                                setEditedMeasurementPoint={setEditedMeasurementPoint}
+                            />
+                        ))}
                     </Col>
                 </Row>
-            </Container>
+
+            </Container >
         </>
     );
 }

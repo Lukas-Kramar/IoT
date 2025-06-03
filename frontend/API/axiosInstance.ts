@@ -1,10 +1,13 @@
 import axios from "axios";
 
-// TODO - add correct configuration
 const apiClient = axios.create({
-    baseURL: 'https://api.example.com', // Replace with your base URL
-    timeout: 1000, // Optional: specify a timeout in milliseconds
-    headers: { 'Content-Type': 'application/json' } // Optional: set default headers
+    baseURL: 'https://iot-team07-api-summer-2025.azurewebsites.net', // Replace with your base URL
+    timeout: 3000, // Optional: specify a timeout in milliseconds
+    headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://iot-team07-api-summer-2025.azurewebsites.net',
+    }, // Optional: set default headers
+
 });
 
 // Add a request interceptor

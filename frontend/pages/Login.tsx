@@ -16,6 +16,8 @@ const Login = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        e.stopPropagation();
+
         try {
             setIsLoading(true);
             const result = await loginUser({ email, password });
@@ -28,38 +30,28 @@ const Login = () => {
             setAlerts([...alerts, "Login Failed"]);
         }
         finally { setIsLoading(false); }
-
     };
-
-    // useEffect(() => {
-    //     const getUserById = async (token: string, userId: string) => {
-    //         try {
-    //             console.log(`Token: ${token} + userId: ${userId}`);
-    //             // TODO - get user by ID => use JWT token from local storage
-    //             // const user: User = await useUser().
-    //         } catch (err) {
-    //             console.error("getUserById - error: ", err);
-    //         }
-
-    //     }
-
-    //     const token = localStorage.getItem("JWTtoken");
-    //     const userId = localStorage.getItem("userId");
-    //     if ((typeof token === "string" && token.length > 2) && (typeof userId === "string" && userId.length > 2)) {
-    //         getUserById(token, userId);
-    //     }
-    // }, []);
 
     return (
         <div className="d-flex justify-content-center align-items-center vh-100 bg-light flex-column">
 
             <Card style={{ width: "500px" }}>
-                <Card.Header className="text-center mb-4">
-                    <h2>Register new Account</h2>
+                <Card.Header className="d-flex flex-row justify-content-between align-items-center mb-4 p-4">
+                    <h2>Sign In</h2>
+                    {/* Company Logo at the top */}
+                    <img
+                        src="./smart-terrarium-logo.png" // Place your logo file in 'public/logo.png' or update the path as needed
+                        alt="Company Logo"
+                        style={{
+                            width: "120px",
+                            borderRadius: "12px",
+                            boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+                        }}
+                    />
                 </Card.Header>
                 <Card.Body>
-                    <Form onSubmit={handleSubmit}>
-                        <Row>
+                    <Form onSubmit={handleSubmit} >
+                        <Row >
                             <Col>
                                 <Form.Label htmlFor="inputEmail">Email</Form.Label>
                                 <Form.Control
@@ -71,8 +63,7 @@ const Login = () => {
                             </Col>
                         </Row>
 
-
-                        <Row>
+                        <Row className="mt-2" >
                             <Col>
                                 <Form.Label htmlFor="inputPassword">Password</Form.Label>
                                 <Form.Control
@@ -83,28 +74,39 @@ const Login = () => {
                                     aria-describedby="passwordHelpBlock"
                                 />
                             </Col>
-                            <Col></Col>
                         </Row>
 
-                        <Button disabled={isLoading} variant="primary" type="submit">
-                            {isLoading ? "Logging User..." : "Login"}
-                        </Button>
+                        <Row className="mt-3" >
+                            <Col className="d-flex justify-content-between">
+                                <Button
+                                    variant="secondary"
+                                    type="submit"
+                                    onClick={() => { navigate("/register") }}
+                                >
+                                    Register
+                                </Button>
+
+                                <Button
+                                    disabled={isLoading}
+                                    variant="primary"
+                                    type="submit"
+                                >
+                                    {isLoading ? "Logging User..." : "Login"}
+                                </Button>
+
+                            </Col>
+                        </Row>
+
+
                     </Form>
 
                     {alerts.map((alert, i) => (
                         <Alert key={`Register-error-alert-${i}`} variant="danger" dismissible className="mb-2">{alert}</Alert>
                     ))}
 
-                    <Button
-                        variant="info"
-                        type="submit"
-                        onClick={() => { navigate("/register") }}
-                    >
-                        Register new Account
-                    </Button>
+
                 </Card.Body>
             </Card>
-
         </div>
     );
 };
