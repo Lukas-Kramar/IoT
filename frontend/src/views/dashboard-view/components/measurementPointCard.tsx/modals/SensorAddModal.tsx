@@ -24,29 +24,32 @@ const SensorAddModal = (props: Props) => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [alerts, setAlerts] = useState<string[]>([]);
+    const [validated, setValidated] = useState(false);
 
-    const [newSensor, setNewSensor] = useState<AddSensorDtoIn>({
-        measurementPointId: mpId,
+    const [newSensor, setNewSensor] = useState({
         name: "",
         quantity: "temperature",
-        config: {
-            sendInterval: 3600,
-            measureInterval: 600,
-            temperatureLimits: {
-                cooling: 24, // if temperature is above this number => start cooling
-                heating: 15 // if temperature is below this number => start heating
-            }
-        },
+        sendInterval: { hours: 0, minutes: 30, seconds: 0 },
+        measureInterval: { hours: 0, minutes: 1, seconds: 0 },
+        cooling: 24, // if temperature is above this number => start cooling
+        heating: 15, // if temperature is below this number => start heating
     });
+
+    const valid = {
+        name: newSensor.name.length > 2,
+        quantity: ["temperature", "acceleration"].includes(newSensor.quantity),
+        sendInterval: Object.values(newSensor.sendInterval).some((val) => val > 0),
+        measureInterval: Object.values(newSensor.sendInterval).some((val) => val > 0),
+        cooling: !isNaN(Number(newSensor.cooling)),
+        heating: !isNaN(Number(newSensor.heating)),
+    }
 
     const addSensorHandler = async () => {
         setIsLoading(true);
+        if (Object.values(valid).some((val) => !val)) {
+            return;
+        }
         try {
-            if (!newSensor.name || newSensor.name.length < 3) {
-                setAlerts(["Sensor name must be at least 3 characters long."]);
-                return;
-            }
-
             const result = await sensorRequests.addSensor(newSensor);
             if (result) {
                 setModalVersion("");
