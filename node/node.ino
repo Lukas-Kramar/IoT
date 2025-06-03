@@ -559,8 +559,8 @@
       TempConfig* TempConfigInstance;
       unsigned long lastTimeStamp;
 
-      int usedDataPoints = 0;
-      int filledDataPoints = 0;
+      byte usedDataPoints = 0;
+      byte filledDataPoints = 0;
       void MeasureData()
       {
         if(filledDataPoints == usedDataPoints)
@@ -588,7 +588,7 @@
       }
     public:
       //has to be public to be reasonably acessible
-      DataPoint Data[50];
+      DataPoint Data[130];
       int GetDataPointCount()
       {
         int returnUsedDataPoints = usedDataPoints;
@@ -643,7 +643,7 @@
 
 
   #define datatypeFloat 0
-  #define datatypeInt 1
+  #define datatypeULong 1
   #define datatypeUInt 2
   #define datatypeMesasurementData 3
   
@@ -662,7 +662,7 @@
         ParamName = paramName;
       }
       byte Datatype;
-      int ValueInt;
+      unsigned long ValueULong;
       unsigned int ValueUInt;
       float ValueFloat;
       char* ParamName;
@@ -712,8 +712,8 @@
             case datatypeFloat:
               Serial.print(params[i].ValueFloat);
               break;
-            case datatypeInt:
-              Serial.print(params[i].ValueInt);
+            case datatypeULong:
+              Serial.print(params[i].ValueULong);
               break;
             case datatypeUInt:
               Serial.print(params[i].ValueUInt);
@@ -760,10 +760,10 @@
       };
 
       byte minBufferSize = maxHeaderSize;
-      void SendConfigRequest(int configChangeOffset)
+      void SendConfigRequest(unsigned long configChangeOffset)
       {
-        ParamData params[] = { ParamData(datatypeInt, paramNameTimestamp), ParamData(datatypeFloat, paramNameMin), ParamData(datatypeFloat, paramNameMax), ParamData(datatypeUInt, paramNameInterval), ParamData(datatypeUInt, paramNameSendInterval) };
-        params[0].ValueInt = configChangeOffset;
+        ParamData params[] = { ParamData(datatypeULong, paramNameTimestamp), ParamData(datatypeFloat, paramNameMin), ParamData(datatypeFloat, paramNameMax), ParamData(datatypeUInt, paramNameInterval), ParamData(datatypeUInt, paramNameSendInterval) };
+        params[0].ValueULong = configChangeOffset;
         params[1].ValueFloat = TempConfigInstance->GetTempCoolerStart();
         params[2].ValueFloat = TempConfigInstance->GetTempHeaterStart();
         params[3].ValueUInt = TempConfigInstance->GetMeasurementDelay();
@@ -908,7 +908,7 @@
       {
         if(firstLoop)
         {
-          SendConfigRequest(-1);
+          SendConfigRequest(0);
           firstLoop = false;
         }
         if(SchedulerInstance->IsScheduleElapsed(SchedulerSendMeasurmentEventId))
