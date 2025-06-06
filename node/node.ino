@@ -18,11 +18,11 @@
 #define SchedulerSendMeasurmentEventId 2
 #define SchdulerMaxSeconds UINT64_MAX/1000
 
-#define TempStateNoAction 0
-#define TempStateHeater 1
-#define TempStateCooler 2
+#define TempStateNoAction 1
+#define TempStateHeater 2
+#define TempStateCooler 3
 
-#define IsDebugActive 1
+//#define IsDebugActive 1
 #ifdef IsDebugActive
 #define DebugTempCoolerStart 70
 #define DebugTempHeaterStart 50
@@ -588,7 +588,7 @@
       }
     public:
       //has to be public to be reasonably acessible
-      DataPoint Data[130];
+      DataPoint Data[100];
       int GetDataPointCount()
       {
         int returnUsedDataPoints = usedDataPoints;
@@ -619,7 +619,7 @@
   //space is used as separator and at message start
   #define maxHeaderSize 16
   //9 - spaces and param identifier, 10 - param value
-  #define maxParamSize 19
+  #define maxParamSize 11
   
   #define serialCauseSendTemp "sendTemp"
   #define serialCauseConfigReq "configReq"
@@ -628,17 +628,10 @@
   #define StateReadParam 1
   #define StateEvaluateMessage 2
 
-  #define messageInHeaderStart "Msg"
   #define messageInConfigUpdateTypeId 0
-  #define messageInTypeConfigUpdate "CfgUp"
-  #define messageInHeaderParamCount "PrmC"
-  #define messageInParamNameTempHeaterStart "TmpHeat"
   #define messageInParamIdentTempHeaterStart 0
-  #define messageInParamNameTempCoolerStart "TmpCool"
   #define messageInParamIdentTempCoolerStart 1
-  #define messageInParamNameMeasurementDelay "MeasDly"
   #define messageInParamIdentMeasurementDelay 2
-  #define messageInParamNameSendMeasurementDelay "SendDly"
   #define messageInParamIdentSendMeasurementDelay 3
 
 
@@ -653,6 +646,7 @@
   #define paramNameSendInterval "sendInterval"
   #define paramNameInterval "interval"
   #define paramNameMeasurementData "measurementData"
+  #define paramNameFirstSend "firstSend"
 
   class ParamData {
     public:
@@ -674,7 +668,7 @@
     public:
       Packet(){}
       byte MessageTypeId = -1;
-      byte MessageState = StateAwaitHeader;
+      int MessageState = StateAwaitHeader;
       byte ParamCount = -1;
       byte ParamsRead = 0;
       String ParamValues[4];
@@ -686,11 +680,7 @@
         ParamsRead = 0;
       }
   };
-
-  #define causeStringStart "{ \"cause\": \""
-  #define causeStringEnd "\""
-  #define paramNameStringStart ", \""
-  #define paramNameStringEnd "\": "
+  
   class DataSender {
     private:
       Scheduler* SchedulerInstance;
@@ -700,13 +690,13 @@
       bool firstLoop = true;
       void sendSerialMessage(char* cause, ParamData params[], byte itemCount)
       {
-        Serial.print(causeStringStart);
+        Serial.print(F("{ \"cause\": \""));
         Serial.print(cause);
-        Serial.print(causeStringEnd);
+        Serial.print(F("\""));
         for (byte i=0; i<itemCount; i++) {
-          Serial.print(paramNameStringStart);
+          Serial.print(F(", \""));
           Serial.print(params[i].ParamName);
-          Serial.print(paramNameStringEnd);
+          Serial.print(F("\": "));
           switch(params[i].Datatype)
           {
             case datatypeFloat:
@@ -725,23 +715,11 @@
               for(int i = 0; i <= maxDataPointId; i++)
               {
                 Serial.print(F("{"));
-                Serial.print(F("\"time\":"));
+                Serial.print(F("\"timeOffset\":"));
                 Serial.print(DataMeasurementInstance->Data[i].timeOffset);
-                Serial.print(F(",\"tempState\":\""));
-                switch(DataMeasurementInstance->Data[i].tempState)
-                {
-                  case TempStateHeater:
-                    Serial.print(F("Heat"));
-                    break;
-                  case TempStateCooler:
-                    Serial.print(F("Cooler"));
-                    break;
-                  default:
-                  case TempStateNoAction:
-                    Serial.print(F("Inactive"));
-                    break;
-                }
-                Serial.print(F("\",\"temp\":"));
+                Serial.print(F(",\"state\":"));
+                Serial.print(DataMeasurementInstance->Data[i].tempState);
+                Serial.print(F(",\"temperature\":"));
                 Serial.print(DataMeasurementInstance->Data[i].temp);
                 Serial.print(F("}"));
                 if(i != maxDataPointId)
@@ -760,14 +738,15 @@
       };
 
       byte minBufferSize = maxHeaderSize;
-      void SendConfigRequest(unsigned long configChangeOffset)
+      void SendConfigRequest(unsigned long configChangeOffset, bool firstSend = false)
       {
-        ParamData params[] = { ParamData(datatypeULong, paramNameTimestamp), ParamData(datatypeFloat, paramNameMin), ParamData(datatypeFloat, paramNameMax), ParamData(datatypeUInt, paramNameInterval), ParamData(datatypeUInt, paramNameSendInterval) };
+        ParamData params[] = { ParamData(datatypeULong, paramNameTimestamp), ParamData(datatypeFloat, paramNameMin), ParamData(datatypeFloat, paramNameMax), ParamData(datatypeUInt, paramNameInterval), ParamData(datatypeUInt, paramNameSendInterval), ParamData(datatypeUInt, paramNameFirstSend) };
         params[0].ValueULong = configChangeOffset;
         params[1].ValueFloat = TempConfigInstance->GetTempCoolerStart();
         params[2].ValueFloat = TempConfigInstance->GetTempHeaterStart();
         params[3].ValueUInt = TempConfigInstance->GetMeasurementDelay();
         params[4].ValueUInt = TempConfigInstance->GetSendMeasurementDelay();
+        params[5].ValueUInt = firstSend ? 1 : 0;
         sendSerialMessage(serialCauseConfigReq, params, sizeof params/sizeof params[0]);
       };
     public:
@@ -784,21 +763,23 @@
         int unreadBytes = Serial.available();
         if(unreadBytes >= minBufferSize)
         {
-          char readString[10];
+          String readString;
+          int messageIdent;
+          bool messageTypeNotFound;
           switch(readHeaderData.MessageState)
           {
             case StateAwaitHeader:
               //mesage start string
-              Serial.readBytesUntil(' ', readString, 10);
-              if(strcmp(messageInHeaderStart, readString) != 0)
+              readString = Serial.readStringUntil(' ');
+              if(readString != "Msg")
               {
                 break;
               }
               //messageType
-              Serial.readBytesUntil(' ', readString, 10);
+              readString = Serial.readStringUntil(' ');
 
-              bool messageTypeNotFound = false;
-              if(strcmp(messageInTypeConfigUpdate, readString) == 0)
+              messageTypeNotFound = false;
+              if(readString == "CfgUp")
               {
                 readHeaderData.MessageTypeId = messageInConfigUpdateTypeId;
                 for(int i =0; i<4; i++)
@@ -814,14 +795,14 @@
               {
                 break;
               }
-              Serial.readBytesUntil(' ', readString, 10);
-              if(strcmp(messageInHeaderParamCount, readString) != 0)
+              readString = Serial.readStringUntil(' ');
+              if(readString != "PrmC")
               {
                 readHeaderData.ResetData();
                 break;
               }
-              byte length = Serial.readBytesUntil(' ', readString, 10);
-              if(length != 1 || readString[0] < '0' || readString[0]  > '9' )
+              readString = Serial.readStringUntil(' ');
+              if(readString.length() != 1 || readString[0] < '0' || readString[0]  > '9' )
               {
                 readHeaderData.ResetData();
                 break;
@@ -831,21 +812,20 @@
               readHeaderData.MessageState = StateReadParam;
               break;
             case StateReadParam:
-              Serial.readBytesUntil(' ', readString, 10);
-              int messageIdent;
-              if(strcmp(messageInParamNameTempHeaterStart, readString) == 0)
+              readString = Serial.readStringUntil(' ');
+              if(readString == "TmpHeat")
               {
                 messageIdent = messageInParamIdentTempHeaterStart;
               }
-              else if(strcmp(messageInParamNameTempCoolerStart, readString) == 0)
+              else if(readString == "TmpCool")
               {
                 messageIdent = messageInParamIdentTempCoolerStart;
               }
-              else if(strcmp(messageInParamNameMeasurementDelay, readString) == 0)
+              else if(readString == "MeasDly")
               {
                 messageIdent = messageInParamIdentMeasurementDelay;
               }
-              else if(strcmp(messageInParamNameSendMeasurementDelay, readString) == 0)
+              else if(readString == "SendDly")
               {
                 messageIdent = messageInParamIdentSendMeasurementDelay;
               }
@@ -855,7 +835,7 @@
                 minBufferSize = maxHeaderSize;
                 break;
               }
-              Serial.readBytesUntil(' ', readString, 10);
+              readString = Serial.readStringUntil(' ');
               readHeaderData.ParamValues[messageIdent] = readString;
               readHeaderData.ParamsRead++;
               if(readHeaderData.ParamsRead < readHeaderData.ParamCount)
@@ -882,33 +862,33 @@
                           TempConfigInstance->SetTempHeaterStart(readHeaderData.ParamValues[i].toFloat(), false);
                           break;
                         case messageInParamIdentTempCoolerStart:
-                          TempConfigInstance->SetTempHeaterStart(readHeaderData.ParamValues[i].toFloat(), false);
+                          TempConfigInstance->SetTempCoolerStart(readHeaderData.ParamValues[i].toFloat(), false);
                           break;
                         case messageInParamIdentMeasurementDelay:
-                          TempConfigInstance->SetTempHeaterStart(readHeaderData.ParamValues[i].toInt(), false);
+                          TempConfigInstance->SetMeasurementDelay(readHeaderData.ParamValues[i].toInt(), false);
                           break;
                         case messageInParamIdentSendMeasurementDelay:
-                          TempConfigInstance->SetTempHeaterStart(readHeaderData.ParamValues[i].toInt(), false);
+                          TempConfigInstance->SetSendMeasurementDelay(readHeaderData.ParamValues[i].toInt(), false);
                           break;
                       }
                     }
                   }
                   break;
-                default:
-                  break;
               }
               readHeaderData.ResetData();
               minBufferSize = maxHeaderSize;
               break;
+            default:
+              break;
           }
         }
-      }
+      }\
 
       void CheckComunicationSchedule()
       {
         if(firstLoop)
         {
-          SendConfigRequest(0);
+          SendConfigRequest(0, true);
           firstLoop = false;
         }
         if(SchedulerInstance->IsScheduleElapsed(SchedulerSendMeasurmentEventId))
