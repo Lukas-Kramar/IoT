@@ -19,8 +19,8 @@
 #define SchdulerMaxSeconds UINT64_MAX/1000
 
 #define TempStateNoAction 1
-#define TempStateHeater 2
-#define TempStateCooler 3
+#define TempStateCooler 2
+#define TempStateHeater 3
 
 //#define IsDebugActive 1
 #ifdef IsDebugActive
@@ -523,20 +523,20 @@
             TempStateChanged = true;
           }
           break;
-        case TempStateHeater:
-          if(ThermTemp > TempConfigInstance->GetTempHeaterEnd())
-          {
-            digitalWrite(pinHeater, LOW);
-            TempStateId = TempStateNoAction;
-            TempStateChanged= true;
-          }
-          break;
         case TempStateCooler:
           if(ThermTemp < TempConfigInstance->GetTempCoolerEnd())
           {
             digitalWrite(pinCooler, LOW);
             TempStateId = TempStateNoAction;
             TempStateChanged = true;
+          }
+          break;
+        case TempStateHeater:
+          if(ThermTemp > TempConfigInstance->GetTempHeaterEnd())
+          {
+            digitalWrite(pinHeater, LOW);
+            TempStateId = TempStateNoAction;
+            TempStateChanged= true;
           }
           break;
       }
@@ -951,11 +951,11 @@
           case TempStateNoAction:
             lcd.print(F("Idle   "));
             break;
-          case TempStateHeater:
-            lcd.print(F("Heating"));
-            break;
           case TempStateCooler:
             lcd.print(F("Cooling"));
+            break;
+          case TempStateHeater:
+            lcd.print(F("Heating"));
             break;
         }
         return;
