@@ -508,6 +508,21 @@
 
       switch(TempStateId)
       {
+        case TempStateNoAction:
+        default:
+          if(ThermTemp < TempConfigInstance->GetTempHeaterStart())
+          {
+            digitalWrite(pinHeater, HIGH);
+            TempStateId = TempStateHeater;
+            TempStateChanged = true;
+          }
+          else if (ThermTemp > TempConfigInstance->GetTempCoolerStart())
+          {
+            digitalWrite(pinCooler, HIGH);
+            TempStateId = TempStateCooler;
+            TempStateChanged = true;
+          }
+          break;
         case TempStateHeater:
           if(ThermTemp > TempConfigInstance->GetTempHeaterEnd())
           {
@@ -521,21 +536,6 @@
           {
             digitalWrite(pinCooler, LOW);
             TempStateId = TempStateNoAction;
-            TempStateChanged = true;
-          }
-          break;
-        case TempStateNoAction:
-        default:
-          if(ThermTemp < TempConfigInstance->GetTempHeaterStart())
-          {
-            digitalWrite(pinHeater, HIGH);
-            TempStateId = TempStateHeater;
-            TempStateChanged = true;
-          }
-          else if (ThermTemp > TempConfigInstance->GetTempCoolerStart())
-          {
-            digitalWrite(pinCooler, HIGH);
-            TempStateId = TempStateCooler;
             TempStateChanged = true;
           }
           break;
@@ -567,20 +567,8 @@
         {
           Data[usedDataPoints] = DataPoint{};
           filledDataPoints++;
-        }
-        switch(TempStatusInstance->TempStateId)
-        {
-          case TempStateHeater:
-            Data[usedDataPoints].tempState = TempStateHeater;
-            break;
-          case TempStateCooler:
-            Data[usedDataPoints].tempState = TempStateCooler;
-            break;
-          default:
-          case TempStateNoAction:
-            Data[usedDataPoints].tempState = TempStateNoAction;
-            break;
-        }
+        }            
+        Data[usedDataPoints].tempState = TempStatusInstance->TempStateId;
         Data[usedDataPoints].timeOffset = SchedulerInstance->GetTimeSinceTimestamp(lastTimeStamp);
         Data[usedDataPoints].temp = TempStatusInstance->ThermTemp;
         usedDataPoints++;
@@ -588,7 +576,7 @@
       }
     public:
       //has to be public to be reasonably acessible
-      DataPoint Data[100];
+      DataPoint Data[130];
       int GetDataPointCount()
       {
         int returnUsedDataPoints = usedDataPoints;
@@ -897,10 +885,7 @@
           ParamData params[] = { ParamData(datatypeMesasurementData, paramNameMeasurementData) };
           sendSerialMessage(serialCauseSendTemp, params, sizeof params / sizeof params[0]);
           unsigned long configChangeOffset = TempConfigInstance->GetConfigUpdateOffset();
-          if(configChangeOffset != 0)
-          {
-            SendConfigRequest(configChangeOffset);
-          }
+          SendConfigRequest(configChangeOffset);
         }
       }
   };  
@@ -962,15 +947,15 @@
         lcd.setCursor(0, 1);
         switch(TempStatusInstance->TempStateId)
         {
+          default:
+          case TempStateNoAction:
+            lcd.print(F("Idle   "));
+            break;
           case TempStateHeater:
             lcd.print(F("Heating"));
             break;
           case TempStateCooler:
             lcd.print(F("Cooling"));
-            break;
-          default:
-          case TempStateNoAction:
-            lcd.print(F("Idle   "));
             break;
         }
         return;
