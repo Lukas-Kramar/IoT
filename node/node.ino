@@ -509,7 +509,6 @@
       switch(TempStateId)
       {
         case TempStateNoAction:
-        default:
           if(ThermTemp < TempConfigInstance->GetTempHeaterStart())
           {
             digitalWrite(pinHeater, HIGH);
@@ -567,7 +566,7 @@
         {
           Data[usedDataPoints] = DataPoint{};
           filledDataPoints++;
-        }            
+        }
         Data[usedDataPoints].tempState = TempStatusInstance->TempStateId;
         Data[usedDataPoints].timeOffset = SchedulerInstance->GetTimeSinceTimestamp(lastTimeStamp);
         Data[usedDataPoints].temp = TempStatusInstance->ThermTemp;
@@ -947,7 +946,6 @@
         lcd.setCursor(0, 1);
         switch(TempStatusInstance->TempStateId)
         {
-          default:
           case TempStateNoAction:
             lcd.print(F("Idle   "));
             break;
@@ -1044,7 +1042,6 @@
         bool buttonMinusState = buttonMinusVal >= 256;
         bool buttonPressed = true;
         switch (lcdStateId) {
-          default:
           case LcdStateInactive:
             if (buttonMainState || buttonPlusState || buttonMinusState) {
               lcd.display();
