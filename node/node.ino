@@ -24,14 +24,15 @@
 
 //#define IsDebugActive 1
 #ifdef IsDebugActive
-#define DebugTempCoolerStart 70
-#define DebugTempHeaterStart 50
-#define DebugMeasurementDelay 1
-#define DebugSendMeasurementDelay 4
+  #define DebugTempCoolerStart 70
+  #define DebugTempHeaterStart 50
+  #define DebugMeasurementDelay 1
+  #define DebugSendMeasurementDelay 4
 #endif
 
 #ifndef Scheduler
   #define schedulerSensitivity 1000
+  #define schedulerEventCount 3
 
   class SchedulerEvent {
     private:
@@ -86,7 +87,7 @@
 
   class Scheduler {
     private:
-      SchedulerEvent schedulerEvents[3];
+      SchedulerEvent schedulerEvents[schedulerEventCount];
       unsigned long lastSchedulerTimestamp = 0LU;
       unsigned long curentSchedulerTimestamp = 0LU;   
     public:
@@ -129,35 +130,35 @@
       }
       bool IsScheduleElapsed(byte index)
       {
-        if(schedulerEvents < 0 || schedulerEvents >= 3)
+        if(schedulerEvents < 0 || schedulerEvents >= schedulerEventCount)
         {
           return schedulerEvents[index].IsScheduleElapsed(curentSchedulerTimestamp);
         }
       }
       void SetNextRun(byte index, unsigned long nextRun)
       {
-        if(schedulerEvents < 0 || schedulerEvents >= 3)
+        if(schedulerEvents < 0 || schedulerEvents >= schedulerEventCount)
         {
           schedulerEvents[index].SetNextRun(nextRun);
         }
       }
       void SetNextRunOffsetFromTime(byte index, unsigned long nextRun, unsigned long offsetFrom)
       {
-        if(schedulerEvents < 0 || schedulerEvents >= 3)
+        if(schedulerEvents < 0 || schedulerEvents >= schedulerEventCount)
         {
           schedulerEvents[index].SetNextRunOffsetFromTime(nextRun, offsetFrom);
         }
       }
       void SetNextRunOffsetFromCurrentTime(byte index, unsigned long nextRun)
       {
-        if(schedulerEvents < 0 || schedulerEvents >= 3)
+        if(schedulerEvents < 0 || schedulerEvents >= schedulerEventCount)
         {
           schedulerEvents[index].SetNextRunOffsetFromTime(nextRun, curentSchedulerTimestamp);
         }
       }
       bool SetNextRunOffsetFromSheduledTime(byte index, unsigned long nextRun)
       {
-        if(schedulerEvents < 0 || schedulerEvents >= 3)
+        if(schedulerEvents < 0 || schedulerEvents >= schedulerEventCount)
         {
           schedulerEvents[index].SetNextRunOffsetFromSheduledTime(nextRun);
         }
@@ -575,7 +576,7 @@
       }
     public:
       //has to be public to be reasonably acessible
-      DataPoint Data[130];
+      DataPoint Data[100];
       int GetDataPointCount()
       {
         int returnUsedDataPoints = usedDataPoints;
@@ -650,8 +651,6 @@
   };
   
   class Packet{
-    private:
-      byte bytesWriten = 0;
     public:
       Packet(){}
       byte MessageTypeId = -1;
@@ -869,7 +868,7 @@
               break;
           }
         }
-      }\
+      }
 
       void CheckComunicationSchedule()
       {
