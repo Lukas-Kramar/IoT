@@ -92,7 +92,7 @@ const Charts = () => {
 
     return (
         <Container className='mt-4'>
-            <h1>Meaured Data</h1>
+            <h1>Measured Data</h1>
 
             <Row className='fw-bold border border-2 mb-3 p-3 rounded'>
                 <Col md={3}>
