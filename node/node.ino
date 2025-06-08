@@ -121,8 +121,7 @@
         if(lastSchedulerTimestamp > curentSchedulerTimestamp)
         {
           //došlo k overflow millis()
-          byte itemCount =sizeof schedulerEvents/sizeof schedulerEvents[0];
-          for (byte i=0; i<itemCount; i++) {
+          for (byte i=0; i<schedulerEventCount; i++) {
               schedulerEvents[i].CorrectSchedulerOverflow();
           }
         }
@@ -669,6 +668,7 @@
   
   class DataSender {
     private:
+      String readString;
       Scheduler* SchedulerInstance;
       TempConfig* TempConfigInstance;
       DataMeasurement* DataMeasurementInstance;
@@ -741,6 +741,7 @@
         SchedulerInstance = scheduler;
         TempConfigInstance = tempConfig;
         DataMeasurementInstance = dataMeasurement;
+        readString.reserve(30);
         SchedulerInstance->SetNextRun(SchedulerSendMeasurmentEventId, TempConfigInstance->GetSendMeasurementDelay());
       };
        
@@ -749,7 +750,6 @@
         int unreadBytes = Serial.available();
         if(unreadBytes >= minBufferSize)
         {
-          String readString;
           int messageIdent;
           bool messageTypeNotFound;
           switch(readHeaderData.MessageState)
